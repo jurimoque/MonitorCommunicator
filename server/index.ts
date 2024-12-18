@@ -60,6 +60,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client
   const PORT = 5000;
   server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
+    log(`Servidor ejecutándose en http://0.0.0.0:${PORT}`);
+    log(`WebSocket disponible en ws://0.0.0.0:${PORT}/ws/{room-id}`);
   });
 })();

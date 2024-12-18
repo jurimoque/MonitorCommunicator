@@ -15,8 +15,9 @@ export function useWebSocket(roomId: string) {
   const connect = useCallback(() => {
     try {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = import.meta.env.DEV ? window.location.hostname + ':5000' : window.location.host;
+      const host = window.location.hostname + ':5000';
       const wsUrl = `${wsProtocol}//${host}/ws/${roomId}`;
+      console.log('Intentando conectar a:', wsUrl);
       
       const socket = new WebSocket(wsUrl);
       let heartbeat: number;
