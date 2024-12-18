@@ -7,7 +7,10 @@ import { eq } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ 
+  noServer: true,
+  verifyClient: () => true // Aceptar todas las conexiones
+});
 
   // Store active connections by room
   const roomConnections: Record<string, WebSocket[]> = {};
