@@ -17,10 +17,19 @@ export function useWebSocket(roomId: string) {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = import.meta.env.DEV ? window.location.hostname + ':5000' : window.location.host;
       const wsUrl = `${wsProtocol}//${host}/ws/${roomId}`;
+      
       const socket = new WebSocket(wsUrl);
+      let heartbeat: number;
 
       socket.onopen = () => {
         setConnected(true);
+        // Iniciar heartbeat
+        heartbeat = window.setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 15000);
+
         toast({
           title: "Conectado",
           description: "Conexión establecida con éxito",
@@ -29,6 +38,7 @@ export function useWebSocket(roomId: string) {
 
       socket.onclose = () => {
         setConnected(false);
+        clearInterval(heartbeat);
         toast({
           title: "Desconectado",
           description: "Intentando reconectar...",
@@ -52,6 +62,14 @@ export function useWebSocket(roomId: string) {
           const data = JSON.parse(event.data);
           if (data.type === 'request') {
             setMessages(prev => [...prev, data.data]);
+          } else if (data.type === 'requestCompleted') {
+            setMessages(prev => prev.filter(msg => msg.id !== data.data.requestId));
+          } else if (data.type === 'error') {
+            toast({
+              title: "Error",
+              description: data.message,
+              variant: "destructive",
+            });
           }
         } catch (error) {
           console.error('Error parsing message:', error);
@@ -59,6 +77,11 @@ export function useWebSocket(roomId: string) {
       };
 
       setWs(socket);
+
+      return () => {
+        clearInterval(heartbeat);
+        socket.close();
+      };
     } catch (error) {
       console.error('Connection error:', error);
       toast({
@@ -72,8 +95,9 @@ export function useWebSocket(roomId: string) {
   }, [roomId, toast]);
 
   useEffect(() => {
-    connect();
+    const cleanup = connect();
     return () => {
+      if (cleanup) cleanup();
       if (ws) {
         ws.close();
       }
