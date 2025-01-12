@@ -23,65 +23,59 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Mapa para mantener registro de usuarios por sala
-  const roomUsers = new Map<string, Set<string>>();
-
-  // Namespace para las salas de música
   const musicRoom = io.of("/music-room");
 
   musicRoom.on("connection", (socket) => {
     console.log(`Cliente conectado: ${socket.id}`);
     let currentRoom: string | null = null;
 
-    socket.on("join", (roomId: string) => {
+    socket.on("join", async (roomId: string) => {
+      if (!roomId) {
+        socket.emit("error", { message: "ID de sala no válido" });
+        return;
+      }
+
       if (currentRoom) {
         socket.leave(currentRoom);
-        const users = roomUsers.get(currentRoom);
-        if (users) {
-          users.delete(socket.id);
-          if (users.size === 0) {
-            roomUsers.delete(currentRoom);
-          }
-        }
       }
 
       socket.join(roomId);
       currentRoom = roomId;
-
-      if (!roomUsers.has(roomId)) {
-        roomUsers.set(roomId, new Set());
-      }
-      roomUsers.get(roomId)!.add(socket.id);
-
       console.log(`Cliente ${socket.id} se unió a la sala ${roomId}`);
-      socket.emit("joined", { roomId });
 
-      // Cargar peticiones existentes
-      db.select()
-        .from(requests)
-        .where(eq(requests.roomId, parseInt(roomId)))
-        .where(eq(requests.completed, false))
-        .then((existingRequests) => {
-          if (existingRequests.length > 0) {
-            socket.emit("initialRequests", existingRequests);
-          }
-        })
-        .catch((error) => {
-          console.error("Error cargando peticiones existentes:", error);
-        });
+      try {
+        const existingRequests = await db.select()
+          .from(requests)
+          .where(eq(requests.roomId, parseInt(roomId)))
+          .where(eq(requests.completed, false));
+
+        socket.emit("joined", { roomId });
+
+        if (existingRequests.length > 0) {
+          socket.emit("initialRequests", existingRequests);
+        }
+      } catch (error) {
+        console.error("Error cargando peticiones existentes:", error);
+        socket.emit("error", { message: "Error cargando peticiones existentes" });
+      }
     });
 
     socket.on("request", async (data: RequestData) => {
       try {
-        console.log("Procesando petición:", data);
+        const roomIdNum = parseInt(data.roomId);
+        if (isNaN(roomIdNum)) {
+          throw new Error("ID de sala no válido");
+        }
 
-        const request = await db.insert(requests).values({
-          roomId: parseInt(data.roomId),
-          musician: data.musician,
-          instrument: data.instrument,
-          targetInstrument: data.targetInstrument,
-          action: data.action,
-        }).returning();
+        const request = await db.insert(requests)
+          .values({
+            roomId: roomIdNum,
+            musician: data.musician,
+            instrument: data.instrument,
+            targetInstrument: data.targetInstrument,
+            action: data.action,
+          })
+          .returning();
 
         console.log("Petición guardada:", request[0]);
 
@@ -92,7 +86,7 @@ export function registerRoutes(app: Express): Server {
         socket.to(data.roomId).emit("newRequest", request[0]);
       } catch (error) {
         console.error("Error procesando petición:", error);
-        socket.emit("error", { message: "Error procesando la petición" });
+        socket.emit("error", { message: "Error procesando la petición: " + error.message });
       }
     });
 
@@ -112,13 +106,6 @@ export function registerRoutes(app: Express): Server {
 
     socket.on("disconnecting", () => {
       if (currentRoom) {
-        const users = roomUsers.get(currentRoom);
-        if (users) {
-          users.delete(socket.id);
-          if (users.size === 0) {
-            roomUsers.delete(currentRoom);
-          }
-        }
         console.log(`Cliente ${socket.id} desconectado de sala ${currentRoom}`);
       }
     });

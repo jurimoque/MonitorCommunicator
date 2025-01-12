@@ -15,10 +15,10 @@ export default function MusicianPanel() {
     targetInstrument: string;
     action: string;
   }) => {
-    if (!connected) return false;
+    if (!connected || !roomId) return false;
 
     sendMessage({
-      roomId: roomId!,
+      roomId,
       musician: instrument,
       instrument: instrument,
       targetInstrument: request.targetInstrument,
