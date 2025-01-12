@@ -8,35 +8,18 @@ import { eq } from "drizzle-orm";
 interface WebSocketConnection extends WebSocket {
   roomId?: string;
   isAlive?: boolean;
+  pingTimeout?: NodeJS.Timeout;
 }
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ 
     noServer: true,
-    clientTracking: true
+    clientTracking: true 
   });
 
   // Store active connections by room
   const roomConnections = new Map<string, Set<WebSocketConnection>>();
-
-  // Ping interval to keep connections alive
-  const pingInterval = setInterval(() => {
-    wss.clients.forEach((ws: WebSocketConnection) => {
-      if (ws.isAlive === false) {
-        console.log(`Client disconnected from room ${ws.roomId}`);
-        removeFromRoom(ws);
-        return ws.terminate();
-      }
-
-      ws.isAlive = false;
-      ws.ping();
-    });
-  }, 15000);
-
-  wss.on("close", () => {
-    clearInterval(pingInterval);
-  });
 
   function removeFromRoom(ws: WebSocketConnection) {
     if (ws.roomId && roomConnections.has(ws.roomId)) {
@@ -62,38 +45,64 @@ export function registerRoutes(app: Express): Server {
     }
   }
 
+  function heartbeat(ws: WebSocketConnection) {
+    if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
+    ws.isAlive = true;
+
+    // Si no hay respuesta en 45 segundos, terminar la conexión
+    ws.pingTimeout = setTimeout(() => {
+      console.log(`Cliente en sala ${ws.roomId} no responde, terminando conexión...`);
+      ws.terminate();
+    }, 45000);
+  }
+
+  // Ping clients every 30 seconds
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws: WebSocketConnection) => {
+      if (ws.isAlive === false) {
+        console.log(`Cliente inactivo en sala ${ws.roomId}, desconectando...`);
+        removeFromRoom(ws);
+        return ws.terminate();
+      }
+
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+
+  wss.on("close", () => {
+    clearInterval(interval);
+  });
+
   httpServer.on("upgrade", (request, socket, head) => {
     const pathname = new URL(request.url!, `http://${request.headers.host}`).pathname;
-    
+
     if (pathname.startsWith("/ws/")) {
       wss.handleUpgrade(request, socket, head, (ws: WebSocketConnection) => {
         const roomId = pathname.split("/")[2];
+        console.log(`Nuevo cliente conectándose a sala ${roomId}`);
+
         ws.roomId = roomId;
         ws.isAlive = true;
+        heartbeat(ws);
 
-        // Add to room connections
         if (!roomConnections.has(roomId)) {
           roomConnections.set(roomId, new Set());
         }
         roomConnections.get(roomId)!.add(ws);
 
-        // Setup WebSocket event handlers
-        ws.on("pong", () => {
-          ws.isAlive = true;
-        });
+        console.log(`Cliente conectado exitosamente a sala ${roomId}`);
+
+        ws.on("pong", () => heartbeat(ws));
 
         ws.on("message", async (message) => {
           try {
             const data = JSON.parse(message.toString());
-            
-            if (data.type === "ping") {
-              ws.isAlive = true;
-              return;
-            }
-            
+            console.log(`Mensaje recibido en sala ${roomId}:`, data);
+
             if (data.type === "request") {
-              console.log(`New request received in room ${roomId}:`, data.data);
-              // Store request in database
+              console.log(`Nueva petición de sonido en sala ${roomId}:`, data.data);
+
               const request = await db.insert(requests).values({
                 roomId: parseInt(data.data.roomId),
                 musician: data.data.musician,
@@ -102,14 +111,21 @@ export function registerRoutes(app: Express): Server {
                 action: data.data.action,
               }).returning();
 
-              // Broadcast to all clients in the room
+              console.log(`Petición guardada en base de datos:`, request[0]);
+
               broadcastToRoom(roomId, {
                 type: "request",
                 data: request[0]
               });
+
+              // Enviar confirmación al cliente que hizo la petición
+              ws.send(JSON.stringify({
+                type: "requestConfirmed",
+                data: request[0]
+              }));
             }
           } catch (error) {
-            console.error("Error processing message:", error);
+            console.error("Error procesando mensaje:", error);
             ws.send(JSON.stringify({
               type: "error",
               message: "Error procesando el mensaje"
@@ -118,11 +134,14 @@ export function registerRoutes(app: Express): Server {
         });
 
         ws.on("close", () => {
+          console.log(`Cliente desconectado de sala ${roomId}`);
+          if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
           removeFromRoom(ws);
         });
 
         ws.on("error", (error) => {
-          console.error("WebSocket error:", error);
+          console.error(`Error de WebSocket en sala ${roomId}:`, error);
+          if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
           removeFromRoom(ws);
         });
       });
@@ -141,18 +160,26 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/rooms/:roomId/requests/:requestId/complete", async (req, res) => {
     const { roomId, requestId } = req.params;
-    await db.update(requests)
-      .set({ completed: true })
-      .where(eq(requests.id, parseInt(requestId)))
-      .returning();
-    
-    // Notify all clients in the room that the request was completed
-    broadcastToRoom(roomId, {
-      type: "requestCompleted",
-      data: { requestId }
-    });
-    
-    res.json({ success: true });
+
+    try {
+      await db.update(requests)
+        .set({ completed: true })
+        .where(eq(requests.id, parseInt(requestId)))
+        .returning();
+
+      broadcastToRoom(roomId, {
+        type: "requestCompleted",
+        data: { requestId: parseInt(requestId) }
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error al completar la petición:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al completar la petición" 
+      });
+    }
   });
 
   return httpServer;

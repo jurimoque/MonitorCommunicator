@@ -103,13 +103,6 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
           <div className="grid grid-cols-2 gap-4">
             <Button
               className="h-16"
-              onClick={() => handleRequest({ targetInstrument, action: "volume_up" })}
-              disabled={loading}
-            >
-              {loading ? "Enviando..." : "Subir Volumen"}
-            </Button>
-            <Button
-              className="h-16"
               onClick={() => handleRequest({ targetInstrument, action: "volume_down" })}
               disabled={loading}
             >
@@ -117,10 +110,10 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
             </Button>
             <Button
               className="h-16"
-              onClick={() => handleRequest({ targetInstrument, action: "reverb_up" })}
+              onClick={() => handleRequest({ targetInstrument, action: "volume_up" })}
               disabled={loading}
             >
-              {loading ? "Enviando..." : "Más Reverb"}
+              {loading ? "Enviando..." : "Subir Volumen"}
             </Button>
             <Button
               className="h-16"
@@ -128,6 +121,13 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
               disabled={loading}
             >
               {loading ? "Enviando..." : "Menos Reverb"}
+            </Button>
+            <Button
+              className="h-16"
+              onClick={() => handleRequest({ targetInstrument, action: "reverb_up" })}
+              disabled={loading}
+            >
+              {loading ? "Enviando..." : "Más Reverb"}
             </Button>
           </div>
         )}
