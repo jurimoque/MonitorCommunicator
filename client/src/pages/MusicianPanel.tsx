@@ -17,16 +17,15 @@ export default function MusicianPanel() {
   }) => {
     if (!connected) return false;
 
-    const success = sendMessage({
-      type: "request",
-      data: {
-        musician: instrument,
-        ...request,
-        roomId
-      }
+    sendMessage({
+      roomId: roomId!,
+      musician: instrument,
+      instrument: instrument,
+      targetInstrument: request.targetInstrument,
+      action: request.action,
     });
 
-    return success;
+    return true;
   };
 
   return (

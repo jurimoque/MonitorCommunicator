@@ -55,19 +55,35 @@ export function registerRoutes(app: Express): Server {
 
       console.log(`Cliente ${socket.id} se unió a la sala ${roomId}`);
       socket.emit("joined", { roomId });
+
+      // Cargar peticiones existentes
+      db.select()
+        .from(requests)
+        .where(eq(requests.roomId, parseInt(roomId)))
+        .where(eq(requests.completed, false))
+        .then((existingRequests) => {
+          if (existingRequests.length > 0) {
+            socket.emit("initialRequests", existingRequests);
+          }
+        })
+        .catch((error) => {
+          console.error("Error cargando peticiones existentes:", error);
+        });
     });
 
     socket.on("request", async (data: RequestData) => {
       try {
+        console.log("Procesando petición:", data);
+
         const request = await db.insert(requests).values({
           roomId: parseInt(data.roomId),
           musician: data.musician,
-          instrument: data.musician,
+          instrument: data.instrument,
           targetInstrument: data.targetInstrument,
           action: data.action,
         }).returning();
 
-        console.log(`Nueva petición guardada:`, request[0]);
+        console.log("Petición guardada:", request[0]);
 
         // Enviar confirmación al remitente
         socket.emit("requestConfirmed", request[0]);
@@ -82,7 +98,7 @@ export function registerRoutes(app: Express): Server {
 
     socket.on("completeRequest", async ({ roomId, requestId }: { roomId: string, requestId: number }) => {
       try {
-        await db.update(requests)
+        const [updatedRequest] = await db.update(requests)
           .set({ completed: true })
           .where(eq(requests.id, requestId))
           .returning();
