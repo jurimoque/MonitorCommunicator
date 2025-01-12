@@ -19,24 +19,28 @@ export function useWebSocket(roomId: string) {
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const pendingRequests = useRef<PendingRequest[]>([]);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-  const MAX_RECONNECT_DELAY = 10000; // 10 segundos máximo entre intentos
-  const MAX_RECONNECT_ATTEMPTS = 10;  // Aumentado a 10 intentos
-  const PENDING_REQUEST_TIMEOUT = 60000; // 1 minuto para peticiones pendientes
+  const MAX_RECONNECT_DELAY = 30000; // 30 segundos máximo entre intentos
+  const MAX_RECONNECT_ATTEMPTS = 10;  // 10 intentos
+  const PENDING_REQUEST_TIMEOUT = 300000; // 5 minutos para peticiones pendientes
 
   const processPendingRequests = useCallback(() => {
-    if (!connected) return;
+    if (!connected || !ws || ws.readyState !== WebSocket.OPEN) return;
 
     const now = Date.now();
     const validRequests = pendingRequests.current.filter(
       req => now - req.timestamp < PENDING_REQUEST_TIMEOUT
     );
 
-    validRequests.forEach(request => {
-      if (ws?.readyState === WebSocket.OPEN) {
-        console.log('[WS] Reintentando envío de mensaje pendiente:', request.message);
-        ws.send(JSON.stringify(request.message));
-      }
-    });
+    if (validRequests.length > 0) {
+      console.log('[WS] Procesando peticiones pendientes:', validRequests.length);
+      validRequests.forEach(request => {
+        try {
+          ws.send(JSON.stringify(request.message));
+        } catch (error) {
+          console.error('[WS] Error reintentando mensaje:', error);
+        }
+      });
+    }
 
     pendingRequests.current = validRequests;
   }, [ws, connected]);
@@ -46,13 +50,7 @@ export function useWebSocket(roomId: string) {
 
     if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
       console.log('[WS] Máximo número de intentos alcanzado');
-      // Solo mostrar un toast cada 30 segundos
-      toast({
-        title: "Problemas de conexión",
-        description: "Intentando restablecer la conexión...",
-        variant: "default", // Cambiado de "destructive" a "default"
-      });
-      setReconnectAttempt(0); // Reiniciar contador para permitir nuevos intentos
+      setReconnectAttempt(0);
       return;
     }
 
@@ -71,15 +69,15 @@ export function useWebSocket(roomId: string) {
         setReconnectAttempt(0);
         processPendingRequests();
 
-        // Heartbeat cada 45 segundos
+        // Heartbeat cada minuto
         heartbeatInterval = setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'ping' }));
           }
-        }, 45000);
+        }, 60000);
 
-        // Revisar mensajes pendientes cada 10 segundos
-        pendingCheckInterval = setInterval(processPendingRequests, 10000);
+        // Revisar mensajes pendientes cada 30 segundos
+        pendingCheckInterval = setInterval(processPendingRequests, 30000);
       };
 
       socket.onclose = (event) => {
@@ -89,9 +87,8 @@ export function useWebSocket(roomId: string) {
         clearInterval(heartbeatInterval);
         clearInterval(pendingCheckInterval);
 
-        // No mostrar mensaje si es un cierre normal
         if (event.code !== 1000) {
-          const timeout = Math.min(1000 * Math.pow(1.5, reconnectAttempt), MAX_RECONNECT_DELAY);
+          const timeout = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
           console.log(`[WS] Reconectando en ${timeout}ms`);
 
           if (reconnectTimeoutRef.current) {
@@ -107,7 +104,6 @@ export function useWebSocket(roomId: string) {
 
       socket.onerror = (error) => {
         console.error('[WS] Error:', error);
-        // No mostrar toast en errores para evitar spam
       };
 
       socket.onmessage = (event) => {
@@ -115,9 +111,7 @@ export function useWebSocket(roomId: string) {
           const data = JSON.parse(event.data);
           console.log('[WS] Mensaje recibido:', data);
 
-          if (data.type === 'pong') {
-            return;
-          }
+          if (data.type === 'pong') return;
 
           switch (data.type) {
             case 'request':
@@ -141,7 +135,7 @@ export function useWebSocket(roomId: string) {
               toast({
                 title: "Petición enviada",
                 description: "Tu petición ha sido recibida correctamente",
-                variant: "default"
+                duration: 3000,
               });
               break;
             case 'error':
@@ -149,7 +143,8 @@ export function useWebSocket(roomId: string) {
               toast({
                 title: "Error",
                 description: data.message,
-                variant: "destructive"
+                variant: "destructive",
+                duration: 5000,
               });
               break;
           }
@@ -173,7 +168,7 @@ export function useWebSocket(roomId: string) {
       };
     } catch (error) {
       console.error('[WS] Error de conexión:', error);
-      const timeout = Math.min(1000 * Math.pow(1.5, reconnectAttempt), MAX_RECONNECT_DELAY);
+      const timeout = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
       if (reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
         reconnectTimeoutRef.current = setTimeout(connect, timeout);
       }

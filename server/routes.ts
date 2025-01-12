@@ -27,52 +27,54 @@ export function registerRoutes(app: Express): Server {
   const roomStates = new Map<string, RoomState>();
 
   function removeFromRoom(ws: WebSocketConnection) {
-    if (ws.roomId && roomStates.has(ws.roomId)) {
-      const state = roomStates.get(ws.roomId)!;
-      state.connections.delete(ws);
-      console.log(`Cliente ${ws.clientId} removido de sala ${ws.roomId}. Clientes restantes: ${state.connections.size}`);
+    if (!ws.roomId || !roomStates.has(ws.roomId)) return;
 
-      if (state.connections.size === 0) {
-        roomStates.delete(ws.roomId);
-        console.log(`Sala ${ws.roomId} eliminada`);
-      }
+    const state = roomStates.get(ws.roomId)!;
+    state.connections.delete(ws);
+    console.log(`Cliente ${ws.clientId} removido de sala ${ws.roomId}. Clientes restantes: ${state.connections.size}`);
+
+    if (state.connections.size === 0) {
+      roomStates.delete(ws.roomId);
+      console.log(`Sala ${ws.roomId} eliminada`);
     }
   }
 
   function broadcastToRoom(roomId: string, message: any) {
     const state = roomStates.get(roomId);
-    if (!state || state.connections.size === 0) {
-      console.log(`No hay conexiones activas en sala ${roomId}`);
-      return;
-    }
+    if (!state) return;
 
     const messageStr = JSON.stringify(message);
+    let sent = 0;
+
     state.connections.forEach((client: WebSocketConnection) => {
       if (client.readyState === WebSocket.OPEN) {
         try {
           client.send(messageStr);
+          sent++;
         } catch (error) {
           console.error(`Error enviando mensaje a cliente ${client.clientId}:`, error);
+          client.terminate();
           removeFromRoom(client);
         }
       }
     });
+
+    console.log(`Mensaje enviado a ${sent} clientes en sala ${roomId}`);
+    state.lastActivity = Date.now();
   }
 
   function heartbeat(ws: WebSocketConnection) {
     if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
     ws.isAlive = true;
 
-    // Aumentar el timeout a 60 segundos
     ws.pingTimeout = setTimeout(() => {
       if (!ws.isAlive) {
         console.log(`Cliente ${ws.clientId} no responde, terminando conexión...`);
         ws.terminate();
       }
-    }, 60000);
+    }, 120000); // 2 minutos de timeout
   }
 
-  // Ping cada 45 segundos
   const interval = setInterval(() => {
     wss.clients.forEach((ws: WebSocketConnection) => {
       if (!ws.isAlive) {
@@ -90,7 +92,7 @@ export function registerRoutes(app: Express): Server {
         ws.terminate();
       }
     });
-  }, 45000);
+  }, 60000); // Ping cada minuto
 
   wss.on("close", () => {
     clearInterval(interval);
@@ -99,96 +101,107 @@ export function registerRoutes(app: Express): Server {
   httpServer.on("upgrade", (request, socket, head) => {
     const pathname = new URL(request.url!, `http://${request.headers.host}`).pathname;
 
-    if (pathname.startsWith("/ws/")) {
-      wss.handleUpgrade(request, socket, head, (ws: WebSocketConnection) => {
-        const roomId = pathname.split("/")[2];
-        const clientId = Math.random().toString(36).substring(7);
-        console.log(`Nuevo cliente ${clientId} conectándose a sala ${roomId}`);
+    if (!pathname.startsWith("/ws/")) {
+      socket.destroy();
+      return;
+    }
 
-        ws.roomId = roomId;
-        ws.clientId = clientId;
-        ws.isAlive = true;
-        heartbeat(ws);
+    const roomId = pathname.split("/")[2];
+    if (!roomId) {
+      socket.destroy();
+      return;
+    }
 
-        // Inicializar estado de la sala
-        if (!roomStates.has(roomId)) {
-          roomStates.set(roomId, {
-            connections: new Set(),
-            lastActivity: Date.now()
-          });
-        }
+    wss.handleUpgrade(request, socket, head, (ws: WebSocketConnection) => {
+      const clientId = Math.random().toString(36).substring(7);
+      console.log(`Nuevo cliente ${clientId} conectándose a sala ${roomId}`);
 
-        const state = roomStates.get(roomId)!;
-        state.connections.add(ws);
-        state.lastActivity = Date.now();
+      ws.roomId = roomId;
+      ws.clientId = clientId;
+      ws.isAlive = true;
+      heartbeat(ws);
 
-        ws.on("pong", () => heartbeat(ws));
+      if (!roomStates.has(roomId)) {
+        roomStates.set(roomId, {
+          connections: new Set(),
+          lastActivity: Date.now()
+        });
+      }
 
-        ws.on("message", async (message) => {
-          try {
-            const data = JSON.parse(message.toString());
-            console.log(`Mensaje recibido de cliente ${clientId}:`, data);
+      const state = roomStates.get(roomId)!;
+      state.connections.add(ws);
+      state.lastActivity = Date.now();
 
-            if (data.type === "ping") {
-              ws.send(JSON.stringify({ type: "pong" }));
-              return;
-            }
+      ws.on("pong", () => heartbeat(ws));
 
-            if (data.type === "request") {
-              try {
-                const request = await db.insert(requests).values({
-                  roomId: parseInt(roomId),
-                  musician: data.data.musician,
-                  instrument: data.data.musician,
-                  targetInstrument: data.data.targetInstrument,
-                  action: data.data.action,
-                }).returning();
+      ws.on("message", async (message) => {
+        try {
+          const data = JSON.parse(message.toString());
+          console.log(`Mensaje recibido de cliente ${clientId}:`, data);
 
-                console.log(`Petición guardada:`, request[0]);
+          if (data.type === "ping") {
+            ws.send(JSON.stringify({ type: "pong" }));
+            return;
+          }
 
-                // Confirmar al remitente
+          if (data.type === "request") {
+            try {
+              const request = await db.insert(requests).values({
+                roomId: parseInt(roomId),
+                musician: data.data.musician,
+                instrument: data.data.musician,
+                targetInstrument: data.data.targetInstrument,
+                action: data.data.action,
+              }).returning();
+
+              console.log(`Petición guardada:`, request[0]);
+
+              // Confirmar al remitente
+              if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                   type: "requestConfirmed",
                   data: request[0]
                 }));
+              }
 
-                // Broadcast a todos en la sala
-                broadcastToRoom(roomId, {
-                  type: "request",
-                  data: request[0]
-                });
-              } catch (error) {
-                console.error("Error procesando petición:", error);
+              // Broadcast a todos en la sala
+              broadcastToRoom(roomId, {
+                type: "request",
+                data: request[0]
+              });
+            } catch (error) {
+              console.error("Error procesando petición:", error);
+              if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                   type: "error",
                   message: "Error procesando la petición"
                 }));
               }
             }
-          } catch (error) {
-            console.error("Error procesando mensaje:", error);
+          }
+        } catch (error) {
+          console.error("Error procesando mensaje:", error);
+          if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
               type: "error",
               message: "Error procesando el mensaje"
             }));
           }
-        });
-
-        ws.on("close", () => {
-          console.log(`Cliente ${clientId} desconectado de sala ${roomId}`);
-          if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
-          removeFromRoom(ws);
-        });
-
-        ws.on("error", (error) => {
-          console.error(`Error de WebSocket para cliente ${clientId}:`, error);
-          if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
-          removeFromRoom(ws);
-        });
+        }
       });
-    } else {
-      socket.destroy();
-    }
+
+      ws.on("close", () => {
+        console.log(`Cliente ${clientId} desconectado de sala ${roomId}`);
+        if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
+        removeFromRoom(ws);
+      });
+
+      ws.on("error", (error) => {
+        console.error(`Error de WebSocket para cliente ${clientId}:`, error);
+        if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
+        removeFromRoom(ws);
+      });
+    });
   });
 
   // API Routes
