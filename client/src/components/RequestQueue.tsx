@@ -20,12 +20,17 @@ export default function RequestQueue({ requests, roomId }: Props) {
 
   const handleComplete = async (requestId: number) => {
     try {
-      await fetch(`/api/rooms/${roomId}/requests/${requestId}/complete`, {
+      const response = await fetch(`/api/rooms/${roomId}/requests/${requestId}/complete`, {
         method: 'POST'
       });
+
+      if (!response.ok) {
+        throw new Error('Error al completar la petición');
+      }
+
       setCompletedIds(prev => [...prev, requestId]);
     } catch (error) {
-      console.error('Error completing request:', error);
+      console.error('Error completando petición:', error);
     }
   };
 
@@ -39,27 +44,31 @@ export default function RequestQueue({ requests, roomId }: Props) {
     }
   };
 
-  const activeRequests = requests.filter(r => !completedIds.includes(r.id));
+  // Filtrar las peticiones completadas
+  const activeRequests = requests.filter(r => !completedIds.includes(r.id) && !r.completed);
 
   return (
     <div className="space-y-4">
-      {activeRequests.map((request) => (
-        <Card key={request.id} className="p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-semibold">{request.musician}</p>
-              <p className="text-sm text-gray-600">
-                {getActionText(request.action)} - {request.targetInstrument}
-              </p>
+      {activeRequests.length > 0 ? (
+        activeRequests.map((request) => (
+          <Card key={request.id} className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-semibold">{request.musician}</p>
+                <p className="text-sm text-gray-600">
+                  {getActionText(request.action)} - {request.targetInstrument}
+                </p>
+              </div>
+              <Button 
+                onClick={() => handleComplete(request.id)}
+                variant="secondary"
+              >
+                Completado
+              </Button>
             </div>
-            <Button onClick={() => handleComplete(request.id)}>
-              Completado
-            </Button>
-          </div>
-        </Card>
-      ))}
-      
-      {activeRequests.length === 0 && (
+          </Card>
+        ))
+      ) : (
         <p className="text-center text-gray-500">No hay peticiones pendientes</p>
       )}
     </div>

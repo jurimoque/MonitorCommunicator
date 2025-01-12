@@ -34,14 +34,24 @@ export function registerRoutes(app: Express): Server {
   }
 
   function broadcastToRoom(roomId: string, message: any) {
+    console.log(`Transmitiendo mensaje a sala ${roomId}:`, message);
     const connections = roomConnections.get(roomId);
     if (connections) {
       const messageStr = JSON.stringify(message);
-      connections.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(messageStr);
+      for (const client of connections) {
+        try {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(messageStr);
+            console.log(`Mensaje enviado a cliente en sala ${roomId}`);
+          }
+        } catch (error) {
+          console.error(`Error enviando mensaje a cliente en sala ${roomId}:`, error);
+          removeFromRoom(client);
         }
-      });
+      }
+      console.log(`Mensaje transmitido a ${connections.size} clientes en sala ${roomId}`);
+    } else {
+      console.log(`No hay conexiones activas en la sala ${roomId}`);
     }
   }
 
@@ -49,14 +59,12 @@ export function registerRoutes(app: Express): Server {
     if (ws.pingTimeout) clearTimeout(ws.pingTimeout);
     ws.isAlive = true;
 
-    // Si no hay respuesta en 45 segundos, terminar la conexión
     ws.pingTimeout = setTimeout(() => {
       console.log(`Cliente en sala ${ws.roomId} no responde, terminando conexión...`);
       ws.terminate();
     }, 45000);
   }
 
-  // Ping clients every 30 seconds
   const interval = setInterval(() => {
     wss.clients.forEach((ws: WebSocketConnection) => {
       if (ws.isAlive === false) {
@@ -91,7 +99,7 @@ export function registerRoutes(app: Express): Server {
         }
         roomConnections.get(roomId)!.add(ws);
 
-        console.log(`Cliente conectado exitosamente a sala ${roomId}`);
+        console.log(`Cliente conectado exitosamente a sala ${roomId}. Total conexiones: ${roomConnections.get(roomId)?.size}`);
 
         ws.on("pong", () => heartbeat(ws));
 
@@ -113,12 +121,13 @@ export function registerRoutes(app: Express): Server {
 
               console.log(`Petición guardada en base de datos:`, request[0]);
 
+              // Enviar la petición a todos los clientes en la sala
               broadcastToRoom(roomId, {
                 type: "request",
                 data: request[0]
               });
 
-              // Enviar confirmación al cliente que hizo la petición
+              // Confirmar al remitente
               ws.send(JSON.stringify({
                 type: "requestConfirmed",
                 data: request[0]
@@ -152,20 +161,30 @@ export function registerRoutes(app: Express): Server {
 
   // API Routes
   app.post("/api/rooms", async (req, res) => {
-    const room = await db.insert(rooms).values({
-      name: req.body.name
-    }).returning();
-    res.json(room[0]);
+    try {
+      const room = await db.insert(rooms).values({
+        name: req.body.name || 'Default Room'
+      }).returning();
+      res.json(room[0]);
+    } catch (error) {
+      console.error("Error creando sala:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error creando la sala" 
+      });
+    }
   });
 
   app.post("/api/rooms/:roomId/requests/:requestId/complete", async (req, res) => {
     const { roomId, requestId } = req.params;
 
     try {
-      await db.update(requests)
+      const result = await db.update(requests)
         .set({ completed: true })
         .where(eq(requests.id, parseInt(requestId)))
         .returning();
+
+      console.log(`Petición ${requestId} marcada como completada`);
 
       broadcastToRoom(roomId, {
         type: "requestCompleted",
