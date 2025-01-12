@@ -18,7 +18,6 @@ export function registerRoutes(app: Express): Server {
     clientTracking: true 
   });
 
-  // Store active connections by room
   const roomConnections = new Map<string, Set<WebSocketConnection>>();
 
   function removeFromRoom(ws: WebSocketConnection) {
@@ -26,33 +25,47 @@ export function registerRoutes(app: Express): Server {
       const connections = roomConnections.get(ws.roomId);
       if (connections) {
         connections.delete(ws);
+        console.log(`Cliente removido de la sala ${ws.roomId}. Clientes restantes: ${connections.size}`);
         if (connections.size === 0) {
           roomConnections.delete(ws.roomId);
+          console.log(`Sala ${ws.roomId} eliminada`);
         }
       }
     }
   }
 
   function broadcastToRoom(roomId: string, message: any) {
-    console.log(`Transmitiendo mensaje a sala ${roomId}:`, message);
     const connections = roomConnections.get(roomId);
-    if (connections) {
-      const messageStr = JSON.stringify(message);
-      for (const client of connections) {
+    if (!connections || connections.size === 0) {
+      console.log(`No hay conexiones activas en la sala ${roomId}`);
+      return;
+    }
+
+    const messageStr = JSON.stringify(message);
+    let successCount = 0;
+    const failedClients: WebSocketConnection[] = [];
+
+    connections.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
         try {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(messageStr);
-            console.log(`Mensaje enviado a cliente en sala ${roomId}`);
-          }
+          client.send(messageStr);
+          successCount++;
         } catch (error) {
           console.error(`Error enviando mensaje a cliente en sala ${roomId}:`, error);
-          removeFromRoom(client);
+          failedClients.push(client);
         }
+      } else {
+        failedClients.push(client);
       }
-      console.log(`Mensaje transmitido a ${connections.size} clientes en sala ${roomId}`);
-    } else {
-      console.log(`No hay conexiones activas en la sala ${roomId}`);
-    }
+    });
+
+    // Limpiar conexiones fallidas
+    failedClients.forEach(client => {
+      removeFromRoom(client);
+      client.terminate();
+    });
+
+    console.log(`Mensaje enviado a ${successCount} de ${connections.size} clientes en sala ${roomId}`);
   }
 
   function heartbeat(ws: WebSocketConnection) {
@@ -99,8 +112,6 @@ export function registerRoutes(app: Express): Server {
         }
         roomConnections.get(roomId)!.add(ws);
 
-        console.log(`Cliente conectado exitosamente a sala ${roomId}. Total conexiones: ${roomConnections.get(roomId)?.size}`);
-
         ws.on("pong", () => heartbeat(ws));
 
         ws.on("message", async (message) => {
@@ -108,30 +119,41 @@ export function registerRoutes(app: Express): Server {
             const data = JSON.parse(message.toString());
             console.log(`Mensaje recibido en sala ${roomId}:`, data);
 
+            if (data.type === "ping") {
+              ws.send(JSON.stringify({ type: "pong" }));
+              return;
+            }
+
             if (data.type === "request") {
-              console.log(`Nueva petición de sonido en sala ${roomId}:`, data.data);
+              try {
+                const request = await db.insert(requests).values({
+                  roomId: parseInt(data.data.roomId),
+                  musician: data.data.musician,
+                  instrument: data.data.musician,
+                  targetInstrument: data.data.targetInstrument,
+                  action: data.data.action,
+                }).returning();
 
-              const request = await db.insert(requests).values({
-                roomId: parseInt(data.data.roomId),
-                musician: data.data.musician,
-                instrument: data.data.musician,
-                targetInstrument: data.data.targetInstrument,
-                action: data.data.action,
-              }).returning();
+                console.log(`Petición guardada:`, request[0]);
 
-              console.log(`Petición guardada en base de datos:`, request[0]);
+                // Enviar confirmación al remitente
+                ws.send(JSON.stringify({
+                  type: "requestConfirmed",
+                  data: request[0]
+                }));
 
-              // Enviar la petición a todos los clientes en la sala
-              broadcastToRoom(roomId, {
-                type: "request",
-                data: request[0]
-              });
-
-              // Confirmar al remitente
-              ws.send(JSON.stringify({
-                type: "requestConfirmed",
-                data: request[0]
-              }));
+                // Broadcast a todos los clientes en la sala
+                broadcastToRoom(roomId, {
+                  type: "request",
+                  data: request[0]
+                });
+              } catch (error) {
+                console.error("Error procesando petición:", error);
+                ws.send(JSON.stringify({
+                  type: "error",
+                  message: "Error procesando la petición"
+                }));
+              }
             }
           } catch (error) {
             console.error("Error procesando mensaje:", error);
@@ -184,8 +206,6 @@ export function registerRoutes(app: Express): Server {
         .where(eq(requests.id, parseInt(requestId)))
         .returning();
 
-      console.log(`Petición ${requestId} marcada como completada`);
-
       broadcastToRoom(roomId, {
         type: "requestCompleted",
         data: { requestId: parseInt(requestId) }
@@ -193,10 +213,10 @@ export function registerRoutes(app: Express): Server {
 
       res.json({ success: true });
     } catch (error) {
-      console.error("Error al completar la petición:", error);
+      console.error("Error completando petición:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error al completar la petición" 
+        message: "Error completando la petición" 
       });
     }
   });

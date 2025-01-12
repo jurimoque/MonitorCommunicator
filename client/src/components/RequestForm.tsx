@@ -86,12 +86,12 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
       </div>
 
       <div className="space-y-4">
-        <Select onValueChange={setTargetInstrument}>
+        <Select value={targetInstrument} onValueChange={setTargetInstrument}>
           <SelectTrigger>
             <SelectValue placeholder="Selecciona instrumento a ajustar" />
           </SelectTrigger>
           <SelectContent>
-            {INSTRUMENTS.map((inst) => (
+            {INSTRUMENTS.filter(inst => inst !== currentInstrument).map((inst) => (
               <SelectItem key={inst} value={inst}>
                 {inst}
               </SelectItem>
@@ -101,33 +101,38 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
 
         {targetInstrument && (
           <div className="grid grid-cols-2 gap-4">
+            {/* Controles de Volumen - Bajar a la izquierda, Subir a la derecha */}
             <Button
               className="h-16"
               onClick={() => handleRequest({ targetInstrument, action: "volume_down" })}
               disabled={loading}
+              variant="secondary"
             >
-              {loading ? "Enviando..." : "Bajar Volumen"}
+              {loading ? "Enviando..." : "- Volumen"}
             </Button>
             <Button
               className="h-16"
               onClick={() => handleRequest({ targetInstrument, action: "volume_up" })}
               disabled={loading}
             >
-              {loading ? "Enviando..." : "Subir Volumen"}
+              {loading ? "Enviando..." : "+ Volumen"}
             </Button>
+
+            {/* Controles de Reverb */}
             <Button
               className="h-16"
               onClick={() => handleRequest({ targetInstrument, action: "reverb_down" })}
               disabled={loading}
+              variant="secondary"
             >
-              {loading ? "Enviando..." : "Menos Reverb"}
+              {loading ? "Enviando..." : "- Reverb"}
             </Button>
             <Button
               className="h-16"
               onClick={() => handleRequest({ targetInstrument, action: "reverb_up" })}
               disabled={loading}
             >
-              {loading ? "Enviando..." : "Más Reverb"}
+              {loading ? "Enviando..." : "+ Reverb"}
             </Button>
           </div>
         )}
