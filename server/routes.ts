@@ -30,33 +30,42 @@ export function registerRoutes(app: Express): Server {
     let currentRoom: string | null = null;
 
     socket.on("join", async (roomId: string) => {
-      if (!roomId) {
-        socket.emit("error", { message: "ID de sala no válido" });
-        return;
-      }
-
-      if (currentRoom) {
-        socket.leave(currentRoom);
-      }
-
-      socket.join(roomId);
-      currentRoom = roomId;
-      console.log(`Cliente ${socket.id} se unió a la sala ${roomId}`);
-
       try {
+        const roomIdNum = parseInt(roomId);
+        if (isNaN(roomIdNum)) {
+          throw new Error("ID de sala no válido");
+        }
+
+        // Verificar si la sala existe
+        const [room] = await db.select()
+          .from(rooms)
+          .where(eq(rooms.id, roomIdNum));
+
+        if (!room) {
+          throw new Error("Sala no encontrada");
+        }
+
+        if (currentRoom) {
+          socket.leave(currentRoom);
+        }
+
+        socket.join(roomId);
+        currentRoom = roomId;
+        console.log(`Cliente ${socket.id} se unió a la sala ${roomId}`);
+
         const existingRequests = await db.select()
           .from(requests)
-          .where(eq(requests.roomId, parseInt(roomId)))
+          .where(eq(requests.roomId, roomIdNum))
           .where(eq(requests.completed, false));
 
-        socket.emit("joined", { roomId });
+        socket.emit("joined", { roomId, name: room.name });
 
         if (existingRequests.length > 0) {
           socket.emit("initialRequests", existingRequests);
         }
       } catch (error) {
-        console.error("Error cargando peticiones existentes:", error);
-        socket.emit("error", { message: "Error cargando peticiones existentes" });
+        console.error("Error al unirse a la sala:", error);
+        socket.emit("error", { message: error.message });
       }
     });
 
@@ -67,7 +76,16 @@ export function registerRoutes(app: Express): Server {
           throw new Error("ID de sala no válido");
         }
 
-        const request = await db.insert(requests)
+        // Verificar si la sala existe antes de procesar la petición
+        const [room] = await db.select()
+          .from(rooms)
+          .where(eq(rooms.id, roomIdNum));
+
+        if (!room) {
+          throw new Error("Sala no encontrada");
+        }
+
+        const [request] = await db.insert(requests)
           .values({
             roomId: roomIdNum,
             musician: data.musician,
@@ -77,30 +95,41 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        console.log("Petición guardada:", request[0]);
+        console.log("Petición guardada:", request);
 
-        // Enviar confirmación al remitente
-        socket.emit("requestConfirmed", request[0]);
+        // Confirmar al remitente
+        socket.emit("requestConfirmed", request);
 
         // Broadcast a todos en la sala
-        socket.to(data.roomId).emit("newRequest", request[0]);
+        socket.to(data.roomId).emit("newRequest", request);
       } catch (error) {
         console.error("Error procesando petición:", error);
-        socket.emit("error", { message: "Error procesando la petición: " + error.message });
+        socket.emit("error", { 
+          message: error instanceof Error ? error.message : "Error procesando la petición"
+        });
       }
     });
 
     socket.on("completeRequest", async ({ roomId, requestId }: { roomId: string, requestId: number }) => {
       try {
+        const roomIdNum = parseInt(roomId);
+        if (isNaN(roomIdNum)) {
+          throw new Error("ID de sala no válido");
+        }
+
         const [updatedRequest] = await db.update(requests)
           .set({ completed: true })
           .where(eq(requests.id, requestId))
           .returning();
 
-        musicRoom.to(roomId).emit("requestCompleted", { requestId });
+        if (updatedRequest) {
+          musicRoom.to(roomId).emit("requestCompleted", { requestId });
+        }
       } catch (error) {
         console.error("Error completando petición:", error);
-        socket.emit("error", { message: "Error completando la petición" });
+        socket.emit("error", { 
+          message: error instanceof Error ? error.message : "Error completando la petición"
+        });
       }
     });
 
@@ -114,10 +143,14 @@ export function registerRoutes(app: Express): Server {
   // API Routes
   app.post("/api/rooms", async (req, res) => {
     try {
-      const room = await db.insert(rooms).values({
-        name: req.body.name || 'Default Room'
-      }).returning();
-      res.json(room[0]);
+      const [room] = await db.insert(rooms)
+        .values({
+          name: req.body.name || 'Sala sin nombre'
+        })
+        .returning();
+
+      console.log("Nueva sala creada:", room);
+      res.json(room);
     } catch (error) {
       console.error("Error creando sala:", error);
       res.status(500).json({ 
