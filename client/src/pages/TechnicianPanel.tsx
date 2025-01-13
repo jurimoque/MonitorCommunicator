@@ -37,13 +37,32 @@ export default function TechnicianPanel() {
           <CardTitle>Cola de Peticiones</CardTitle>
           <Button 
             variant="outline"
-            onClick={() => {
-              setRequests([]);
-              toast({
-                title: "Cola limpiada",
-                description: "Se han eliminado todas las peticiones",
-                duration: 2000
-              });
+            onClick={async () => {
+              try {
+                // Marcar todas las peticiones como completadas
+                await Promise.all(requests.map(request => 
+                  fetch(`/api/rooms/${roomId}/requests/${request.id}/complete`, {
+                    method: 'POST'
+                  })
+                ));
+                
+                // Actualizar el estado local
+                const updatedRequests = requests.map(req => ({ ...req, completed: true }));
+                setRequests(updatedRequests);
+                
+                toast({
+                  title: "Cola limpiada",
+                  description: "Se han completado todas las peticiones",
+                  duration: 2000
+                });
+              } catch (error) {
+                console.error('Error al limpiar cola:', error);
+                toast({
+                  title: "Error",
+                  description: "No se pudieron completar todas las peticiones",
+                  variant: "destructive"
+                });
+              }
             }}
           >
             Limpiar Cola

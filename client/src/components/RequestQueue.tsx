@@ -87,7 +87,10 @@ export default function RequestQueue({ requests, roomId }: Props) {
                   <span style={{ color: request.action.includes('up') ? '#ff0000' : '#00ff00' }}>
                     {request.action.includes('up') ? '+' : '-'}
                   </span>{' '}
-                  <span style={{ color: request.action.includes('up') ? '#ff0000' : '#00ff00' }}>
+                  <span style={{ 
+                    color: request.action.includes('up') ? '#ff0000' : '#00ff00',
+                    fontSize: request.action.includes('reverb') ? '0.85em' : '1em'
+                  }}>
                     {request.action.includes('reverb') ? 'REVERB' : 'VOLUMEN'}
                   </span>
                 </p>
