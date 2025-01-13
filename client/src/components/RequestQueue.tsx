@@ -75,13 +75,13 @@ export default function RequestQueue({ requests, roomId }: Props) {
             <div className="flex justify-between items-center">
               <div>
                 <p 
-                  className="font-semibold" 
+                  className="text-2xl font-bold uppercase" 
                   style={{ color: INSTRUMENT_COLORS[request.musician]?.text }}
                 >
                   {request.musician}
                 </p>
-                <p className="text-sm" style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
-                  {getActionText(request.action)} - {request.targetInstrument}
+                <p className="text-xl font-semibold uppercase" style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
+                  {request.targetInstrument} {request.action.includes('up') ? '+' : '-'}
                 </p>
               </div>
               <Button 

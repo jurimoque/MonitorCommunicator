@@ -116,31 +116,31 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
               disabled={loading}
               variant="secondary"
             >
-              {loading ? "Enviando..." : "- Volumen"}
+              {loading ? "ENVIANDO..." : "VOLUMEN -"}
             </Button>
             <Button
-              className="h-16"
+              className="h-16 text-3xl font-bold"
               onClick={() => handleRequest({ targetInstrument, action: "volume_up" })}
               disabled={loading}
             >
-              {loading ? "Enviando..." : "+ Volumen"}
+              {loading ? "ENVIANDO..." : "VOLUMEN +"}
             </Button>
 
             {/* Controles de Reverb */}
             <Button
-              className="h-16"
+              className="h-16 text-3xl font-bold"
               onClick={() => handleRequest({ targetInstrument, action: "reverb_down" })}
               disabled={loading}
               variant="secondary"
             >
-              {loading ? "Enviando..." : "- Reverb"}
+              {loading ? "ENVIANDO..." : "REVERB -"}
             </Button>
             <Button
-              className="h-16"
+              className="h-16 text-3xl font-bold"
               onClick={() => handleRequest({ targetInstrument, action: "reverb_up" })}
               disabled={loading}
             >
-              {loading ? "Enviando..." : "+ Reverb"}
+              {loading ? "ENVIANDO..." : "REVERB +"}
             </Button>
           </div>
         )}
