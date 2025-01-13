@@ -80,10 +80,15 @@ export default function RequestQueue({ requests, roomId }: Props) {
                 >
                   {request.musician}
                 </p>
-                <p className="text-xl font-semibold uppercase" style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
-                  {request.targetInstrument} {request.action.includes('reverb') ? 'REVERB' : 'VOLUMEN'} 
+                <p className="text-xl font-semibold uppercase">
+                  <span style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
+                    {request.targetInstrument}
+                  </span>{' '}
                   <span style={{ color: request.action.includes('up') ? '#ff0000' : '#00ff00' }}>
                     {request.action.includes('up') ? '+' : '-'}
+                  </span>{' '}
+                  <span style={{ color: request.action.includes('up') ? '#ff0000' : '#00ff00' }}>
+                    {request.action.includes('reverb') ? 'REVERB' : 'VOLUMEN'}
                   </span>
                 </p>
               </div>
