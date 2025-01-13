@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { INSTRUMENT_COLORS } from "@/lib/constants";
 
 interface Request {
   id: number;

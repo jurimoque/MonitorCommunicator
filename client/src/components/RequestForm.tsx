@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { INSTRUMENTS, INSTRUMENT_COLORS } from "@/lib/constants";
 
 const INSTRUMENTS = [
   "Batería", "Bajo", "Guitarra", "Teclados",
