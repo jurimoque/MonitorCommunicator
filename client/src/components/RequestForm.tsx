@@ -88,6 +88,22 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {/* Mostrar primero el instrumento actual */}
+          <button
+            onClick={() => setTargetInstrument(currentInstrument)}
+            className={`p-3 rounded-lg transition-all ${
+              targetInstrument === currentInstrument 
+                ? 'ring-2 ring-offset-2 ring-black scale-105' 
+                : 'hover:scale-105'
+            }`}
+            style={{
+              backgroundColor: INSTRUMENT_COLORS[currentInstrument].bg,
+              color: INSTRUMENT_COLORS[currentInstrument].text
+            }}
+          >
+            YO ({currentInstrument})
+          </button>
+          {/* Luego mostrar el resto de instrumentos */}
           {INSTRUMENTS.filter(inst => inst !== currentInstrument).map((inst) => (
             <button
               key={inst}

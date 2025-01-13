@@ -50,8 +50,8 @@ export default function RequestQueue({ requests, roomId }: Props) {
     switch (action) {
       case 'volume_up': return 'Subir volumen';
       case 'volume_down': return 'Bajar volumen';
-      case 'reverb_up': return 'Más reverb';
-      case 'reverb_down': return 'Menos reverb';
+      case 'reverb_up': return 'Subir reverb';
+      case 'reverb_down': return 'Bajar reverb';
       default: return action;
     }
   };
