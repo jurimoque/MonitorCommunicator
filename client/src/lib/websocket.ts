@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 
 interface SocketRequest {
   musician: string;
@@ -11,57 +11,72 @@ interface SocketRequest {
 }
 
 export function useWebSocket(roomId: string) {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<any>(null);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const { toast } = useToast();
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    // Configuración del socket con opciones mejoradas de reconexión
+    console.log('[Socket.IO] Iniciando conexión para sala:', roomId);
+
     const socketIo = io("/music-room", {
-      path: "/socket.io",
+      path: '/ws',
       transports: ['websocket', 'polling'],
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: Infinity,
+      reconnectionDelay: Math.min(1000 * Math.pow(2, retryCount), 10000), // Exponential backoff
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: 5,
       timeout: 20000,
-      auth: {
-        roomId
-      }
+      forceNew: true,
+      query: { roomId }
     });
 
-    // Manejadores de eventos de conexión
+    // Event handlers
     socketIo.on("connect", () => {
       console.log('[Socket.IO] Conectado al servidor');
       setConnected(true);
+      setRetryCount(0);
       socketIo.emit("join", roomId);
-    });
-
-    socketIo.on("connect_error", (error) => {
-      console.error('[Socket.IO] Error de conexión:', error);
-      setConnected(false);
-      toast({
-        title: "Error de conexión",
-        description: "Intentando reconectar al servidor...",
-        variant: "destructive",
-        duration: 3000,
-      });
     });
 
     socketIo.on("disconnect", (reason) => {
       console.log('[Socket.IO] Desconectado:', reason);
       setConnected(false);
-      if (reason === "io server disconnect") {
-        socketIo.connect();
+
+      if (retryCount < 5) {
+        setRetryCount(prev => prev + 1);
+        toast({
+          title: "Desconectado",
+          description: "Se perdió la conexión. Reconectando...",
+          variant: "destructive",
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: "Error de conexión",
+          description: "No se pudo reconectar al servidor. Por favor, recarga la página.",
+          variant: "destructive",
+          duration: 5000,
+        });
       }
     });
 
-    socketIo.on("reconnect", (attemptNumber) => {
-      console.log('[Socket.IO] Reconectado después de', attemptNumber, 'intentos');
-      socketIo.emit("join", roomId);
+    socketIo.on("connect_error", (error) => {
+      console.error('[Socket.IO] Error de conexión:', error);
+      setConnected(false);
     });
 
-    // Manejadores de eventos específicos de la aplicación
+    socketIo.on("error", (error: any) => {
+      console.error('[Socket.IO] Error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Error de conexión",
+        variant: "destructive",
+        duration: 3000,
+      });
+    });
+
+    // Room event handlers
     socketIo.on("joined", (data) => {
       console.log('[Socket.IO] Unido a sala:', data);
       toast({
@@ -71,18 +86,8 @@ export function useWebSocket(roomId: string) {
       });
     });
 
-    socketIo.on("error", (error) => {
-      console.error('[Socket.IO] Error:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-        duration: 5000,
-      });
-    });
-
     socketIo.on("initialRequests", (requests) => {
-      console.log('[Socket.IO] Peticiones iniciales recibidas:', requests);
+      console.log('[Socket.IO] Peticiones iniciales:', requests);
       if (Array.isArray(requests)) {
         setMessages(requests.filter(req => !req.completed));
       }
@@ -92,39 +97,43 @@ export function useWebSocket(roomId: string) {
       console.log('[Socket.IO] Petición confirmada:', request);
       toast({
         title: "Petición enviada",
-        description: "Tu petición ha sido recibida correctamente",
+        description: "Tu petición ha sido recibida",
         duration: 3000,
       });
     });
 
     socketIo.on("newRequest", (request) => {
-      console.log('[Socket.IO] Nueva petición recibida:', request);
+      console.log('[Socket.IO] Nueva petición:', request);
       setMessages(prev => {
-        // Evitar duplicados
-        const exists = prev.some(msg => msg.id === request.id);
-        if (!exists) {
-          return [...prev, request];
+        if (!request || prev.some(msg => msg.id === request.id) || request.completed) {
+          return prev;
         }
-        return prev;
+        return [...prev, request];
       });
     });
 
     socketIo.on("requestCompleted", ({ requestId }) => {
       console.log('[Socket.IO] Petición completada:', requestId);
       setMessages(prev => prev.filter(msg => msg.id !== requestId));
+      toast({
+        title: "Petición completada",
+        description: "La petición ha sido completada",
+        duration: 3000,
+      });
     });
 
     setSocket(socketIo);
 
     return () => {
       console.log('[Socket.IO] Limpiando conexión');
+      socketIo.removeAllListeners();
       socketIo.disconnect();
     };
-  }, [roomId, toast]);
+  }, [roomId, toast, retryCount]);
 
   const sendMessage = useCallback((message: SocketRequest) => {
     if (!socket?.connected) {
-      console.log('[Socket.IO] No conectado, no se puede enviar mensaje');
+      console.error('[Socket.IO] No conectado, no se puede enviar mensaje');
       toast({
         title: "Error",
         description: "No hay conexión con el servidor",
@@ -135,11 +144,11 @@ export function useWebSocket(roomId: string) {
     }
 
     try {
-      console.log('[Socket.IO] Enviando mensaje:', message);
+      console.log('[Socket.IO] Enviando petición:', message);
       socket.emit("request", message);
       return true;
     } catch (error) {
-      console.error('[Socket.IO] Error enviando mensaje:', error);
+      console.error('[Socket.IO] Error enviando petición:', error);
       toast({
         title: "Error",
         description: "No se pudo enviar la petición",

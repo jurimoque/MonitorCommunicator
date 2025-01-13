@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
+import { Server } from "socket.io";
 import { db } from "@db";
 import { rooms } from "@db/schema";
 import { log } from "./vite";
@@ -25,7 +25,7 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api") || path.startsWith("/ws")) {
+    if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
@@ -41,47 +41,62 @@ app.use((req, res, next) => {
 });
 
 // API Routes
-app.post("/api/rooms", async (req, res) => {
+app.post("/api/rooms", async (req, res, next) => {
   try {
+    if (!req.body.name || typeof req.body.name !== 'string') {
+      return res.status(400).json({ message: "El nombre de la sala es requerido" });
+    }
+
     const [room] = await db.insert(rooms)
       .values({
-        name: req.body.name || 'Sala sin nombre'
+        name: req.body.name
       })
       .returning();
 
+    log(`[API] Sala creada: ${JSON.stringify(room)}`);
     res.json(room);
   } catch (error) {
     console.error("[API] Error creando sala:", error);
-    res.status(500).json({
-      message: "Error al crear la sala"
-    });
+    next(error);
   }
 });
 
 // Error handling middleware
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Error:', err);
+  console.error("[Error]", err);
   const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+  const message = err.message || "Error interno del servidor";
   res.status(status).json({ message });
 });
 
 (async () => {
   try {
     // Verificar conexión a la base de datos
-    const testQuery = await db.query.rooms.findFirst();
-    log("Conexión a la base de datos establecida correctamente");
+    await db.query.rooms.findFirst();
+    log("Conexión a la base de datos establecida");
 
     // Crear servidor HTTP
-    const httpServer = createServer(app);
+    const server = createServer(app);
 
-    // Configurar Socket.IO
-    const io = new SocketIOServer(httpServer, {
-      path: "/socket.io",
+    // Configurar Socket.IO con opciones optimizadas
+    const io = new Server(server, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+        credentials: true
+      },
       transports: ['websocket', 'polling'],
       pingTimeout: 60000,
       pingInterval: 25000,
-      connectTimeout: 30000,
+      connectTimeout: 45000,
+      maxHttpBufferSize: 1e8,
+      allowEIO3: true,
+      path: '/ws'
+    });
+
+    // Manejar errores de Socket.IO a nivel global
+    io.engine.on("connection_error", (err) => {
+      console.error("[Socket.IO] Error de conexión:", err);
     });
 
     // Configurar WebSocket
@@ -89,16 +104,16 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
     // Configurar Vite o servir archivos estáticos
     if (app.get("env") === "development") {
-      await setupVite(app, httpServer);
+      await setupVite(app, server);
     } else {
       serveStatic(app);
     }
 
     // Iniciar servidor
-    const PORT = 5000;
-    httpServer.listen(PORT, "0.0.0.0", () => {
-      log(`Servidor ejecutándose en http://0.0.0.0:${PORT}`);
-      log(`WebSocket disponible en ws://0.0.0.0:${PORT}/socket.io`);
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, "0.0.0.0", () => {
+      log(`Servidor iniciado en puerto ${PORT}`);
+      log("WebSocket habilitado en /ws");
     });
 
   } catch (err) {
