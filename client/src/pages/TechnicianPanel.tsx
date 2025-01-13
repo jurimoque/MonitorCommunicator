@@ -25,23 +25,20 @@ export default function TechnicianPanel() {
 
   useEffect(() => {
     if (Array.isArray(messages)) {
-      console.log('Mensajes actualizados en TechnicianPanel:', messages);
-      // Solo cargar peticiones no completadas al inicio
-      const incompleteRequests = messages.filter(msg => !msg.completed);
-      setRequests(incompleteRequests);
+      const currentRequests = messages.filter(msg => !msg.completed);
+      setRequests(currentRequests);
     }
   }, [messages]);
 
   const clearAllRequests = async () => {
     try {
-      const incompletedRequests = requests.filter(req => !req.completed);
-      await Promise.all(incompletedRequests.map(request => 
+      await Promise.all(requests.map(request => 
         fetch(`/api/rooms/${roomId}/requests/${request.id}/complete`, {
           method: 'POST'
         })
       ));
       
-      setRequests(prevRequests => prevRequests.map(req => ({ ...req, completed: true })));
+      setRequests([]);
       
       toast({
         title: "Cola limpiada",
