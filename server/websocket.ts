@@ -1,5 +1,3 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { db } from "@db";
 import { rooms, requests } from "@db/schema";
@@ -13,16 +11,7 @@ interface RequestData {
   action: string;
 }
 
-export function registerRoutes(app: Express): Server {
-  const httpServer = createServer(app);
-  const io = new SocketIOServer(httpServer, {
-    path: "/socket.io",
-    transports: ['websocket', 'polling'],
-    pingTimeout: 60000,
-    pingInterval: 25000,
-    connectTimeout: 30000,
-  });
-
+export function setupWebSocket(io: SocketIOServer) {
   const musicRoom = io.of("/music-room");
 
   musicRoom.on("connection", (socket) => {
@@ -30,17 +19,11 @@ export function registerRoutes(app: Express): Server {
 
     socket.on("join", async (roomId: string) => {
       try {
-        // Validar roomId
         const roomIdNum = parseInt(roomId, 10);
         if (isNaN(roomIdNum)) {
           throw new Error("ID de sala no válido");
         }
 
-        // Unirse a la sala
-        await socket.join(roomId);
-        console.log(`[Socket.IO] Cliente ${socket.id} se unió a la sala ${roomId}`);
-
-        // Obtener información de la sala y peticiones pendientes
         const room = await db.query.rooms.findFirst({
           where: eq(rooms.id, roomIdNum)
         });
@@ -49,11 +32,13 @@ export function registerRoutes(app: Express): Server {
           throw new Error("Sala no encontrada");
         }
 
+        await socket.join(roomId);
+        console.log(`[Socket.IO] Cliente ${socket.id} se unió a la sala ${roomId}`);
+
         const pendingRequests = await db.query.requests.findMany({
           where: eq(requests.roomId, roomIdNum)
         });
 
-        // Enviar datos iniciales
         socket.emit("joined", { 
           roomId: roomId,
           name: room.name 
@@ -75,7 +60,6 @@ export function registerRoutes(app: Express): Server {
           throw new Error("ID de sala no válido");
         }
 
-        // Crear la petición
         const [newRequest] = await db.insert(requests)
           .values({
             roomId: roomIdNum,
@@ -86,9 +70,8 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        // Notificar a todos en la sala
-        musicRoom.to(data.roomId).emit("newRequest", newRequest);
         socket.emit("requestConfirmed", newRequest);
+        musicRoom.to(data.roomId).emit("newRequest", newRequest);
 
       } catch (error) {
         console.error("[Socket.IO] Error procesando petición:", error);
@@ -98,7 +81,7 @@ export function registerRoutes(app: Express): Server {
       }
     });
 
-    socket.on("completeRequest", async ({ requestId }: { requestId: number }) => {
+    socket.on("completeRequest", async (requestId: number) => {
       try {
         const [updatedRequest] = await db.update(requests)
           .set({ completed: true })
@@ -120,24 +103,4 @@ export function registerRoutes(app: Express): Server {
       console.log(`[Socket.IO] Cliente desconectado: ${socket.id}`);
     });
   });
-
-  // API Routes
-  app.post("/api/rooms", async (req, res) => {
-    try {
-      const [room] = await db.insert(rooms)
-        .values({
-          name: req.body.name || 'Sala sin nombre'
-        })
-        .returning();
-
-      res.json(room);
-    } catch (error) {
-      console.error("[API] Error creando sala:", error);
-      res.status(500).json({
-        message: "Error al crear la sala"
-      });
-    }
-  });
-
-  return httpServer;
 }
