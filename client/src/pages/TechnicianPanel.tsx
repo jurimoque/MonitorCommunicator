@@ -31,8 +31,21 @@ export default function TechnicianPanel() {
   return (
     <div className="min-h-screen p-4 bg-gradient-to-b from-gray-50 to-gray-100">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Cola de Peticiones</CardTitle>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              setRequests([]);
+              toast({
+                title: "Cola limpiada",
+                description: "Se han eliminado todas las peticiones",
+                duration: 2000
+              });
+            }}
+          >
+            Limpiar Cola
+          </Button>
           {!connected && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />

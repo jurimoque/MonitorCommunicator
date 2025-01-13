@@ -45,6 +45,8 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
       toast({
         title: "Petición enviada",
         description: `Se ha enviado tu petición para ${getActionText(request.action)} de ${request.targetInstrument}`,
+        duration: 2000,
+        className: "w-auto"
       });
     } catch (error) {
       toast({

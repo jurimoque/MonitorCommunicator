@@ -92,7 +92,8 @@ export function setupWebSocket(io: SocketIOServer) {
       name: room.name
     });
 
-    socket.emit("initialRequests", pendingRequests.filter(req => !req.completed));
+    const activeRequests = pendingRequests.filter(req => !req.completed);
+    socket.emit("initialRequests", activeRequests);
   }
 
   async function handleRequest(socket: any, data: RequestData) {
