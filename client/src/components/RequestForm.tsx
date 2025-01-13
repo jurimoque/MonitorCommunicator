@@ -129,19 +129,19 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
           <div className="grid grid-cols-2 gap-4">
             {/* Controles de Volumen - Bajar a la izquierda, Subir a la derecha */}
             <Button
-              className="h-16"
+              className="h-16 text-3xl font-bold"
               onClick={() => handleRequest({ targetInstrument, action: "volume_down" })}
               disabled={loading}
               variant="secondary"
             >
-              {loading ? "ENVIANDO..." : "VOLUMEN -"}
+              {loading ? "ENVIANDO..." : "- VOLUMEN"}
             </Button>
             <Button
               className="h-16 text-3xl font-bold"
               onClick={() => handleRequest({ targetInstrument, action: "volume_up" })}
               disabled={loading}
             >
-              {loading ? "ENVIANDO..." : "VOLUMEN +"}
+              {loading ? "ENVIANDO..." : "+ VOLUMEN"}
             </Button>
 
             {/* Controles de Reverb */}
