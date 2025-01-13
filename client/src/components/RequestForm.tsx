@@ -86,18 +86,25 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
       </div>
 
       <div className="space-y-4">
-        <Select value={targetInstrument} onValueChange={setTargetInstrument}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona instrumento a ajustar" />
-          </SelectTrigger>
-          <SelectContent>
-            {INSTRUMENTS.filter(inst => inst !== currentInstrument).map((inst) => (
-              <SelectItem key={inst} value={inst}>
-                {inst}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {INSTRUMENTS.filter(inst => inst !== currentInstrument).map((inst) => (
+            <button
+              key={inst}
+              onClick={() => setTargetInstrument(inst)}
+              className={`p-3 rounded-lg transition-all ${
+                targetInstrument === inst 
+                  ? 'ring-2 ring-offset-2 ring-black scale-105' 
+                  : 'hover:scale-105'
+              }`}
+              style={{
+                backgroundColor: INSTRUMENT_COLORS[inst].bg,
+                color: INSTRUMENT_COLORS[inst].text
+              }}
+            >
+              {inst}
+            </button>
+          ))}
+        </div>
 
         {targetInstrument && (
           <div className="grid grid-cols-2 gap-4">

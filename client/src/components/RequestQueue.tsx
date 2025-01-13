@@ -63,11 +63,23 @@ export default function RequestQueue({ requests, roomId }: Props) {
     <div className="space-y-4">
       {activeRequests.length > 0 ? (
         activeRequests.map((request) => (
-          <Card key={request.id} className="p-4 hover:shadow-md transition-shadow">
+          <Card 
+            key={request.id} 
+            className="p-4 hover:shadow-md transition-shadow"
+            style={{
+              backgroundColor: INSTRUMENT_COLORS[request.musician]?.bg + '40',
+              borderColor: INSTRUMENT_COLORS[request.musician]?.bg
+            }}
+          >
             <div className="flex justify-between items-center">
               <div>
-                <p className="font-semibold">{request.musician}</p>
-                <p className="text-sm text-gray-600">
+                <p 
+                  className="font-semibold" 
+                  style={{ color: INSTRUMENT_COLORS[request.musician]?.text }}
+                >
+                  {request.musician}
+                </p>
+                <p className="text-sm" style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
                   {getActionText(request.action)} - {request.targetInstrument}
                 </p>
               </div>
