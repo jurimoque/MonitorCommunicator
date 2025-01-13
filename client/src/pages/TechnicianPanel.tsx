@@ -26,9 +26,37 @@ export default function TechnicianPanel() {
   useEffect(() => {
     if (Array.isArray(messages)) {
       console.log('Mensajes actualizados en TechnicianPanel:', messages);
-      setRequests(messages.filter(msg => !msg.completed));
+      // Solo cargar peticiones no completadas al inicio
+      const incompleteRequests = messages.filter(msg => !msg.completed);
+      setRequests(incompleteRequests);
     }
   }, [messages]);
+
+  const clearAllRequests = async () => {
+    try {
+      const incompletedRequests = requests.filter(req => !req.completed);
+      await Promise.all(incompletedRequests.map(request => 
+        fetch(`/api/rooms/${roomId}/requests/${request.id}/complete`, {
+          method: 'POST'
+        })
+      ));
+      
+      setRequests(prevRequests => prevRequests.map(req => ({ ...req, completed: true })));
+      
+      toast({
+        title: "Cola limpiada",
+        description: "Se han completado todas las peticiones",
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('Error al limpiar cola:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron completar todas las peticiones",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen p-4 bg-gradient-to-b from-gray-50 to-gray-100">
@@ -37,33 +65,7 @@ export default function TechnicianPanel() {
           <CardTitle>Cola de Peticiones</CardTitle>
           <Button 
             variant="outline"
-            onClick={async () => {
-              try {
-                // Marcar todas las peticiones como completadas
-                await Promise.all(requests.map(request => 
-                  fetch(`/api/rooms/${roomId}/requests/${request.id}/complete`, {
-                    method: 'POST'
-                  })
-                ));
-                
-                // Actualizar el estado local
-                const updatedRequests = requests.map(req => ({ ...req, completed: true }));
-                setRequests(updatedRequests);
-                
-                toast({
-                  title: "Cola limpiada",
-                  description: "Se han completado todas las peticiones",
-                  duration: 2000
-                });
-              } catch (error) {
-                console.error('Error al limpiar cola:', error);
-                toast({
-                  title: "Error",
-                  description: "No se pudieron completar todas las peticiones",
-                  variant: "destructive"
-                });
-              }
-            }}
+            onClick={clearAllRequests}
           >
             Limpiar Cola
           </Button>
