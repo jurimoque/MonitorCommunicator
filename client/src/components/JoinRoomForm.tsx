@@ -5,9 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   onJoin: (roomId: string) => void;
+  role: "musician" | "technician";
 }
 
-export default function JoinRoomForm({ onJoin }: Props) {
+export default function JoinRoomForm({ onJoin, role }: Props) {
   const [roomId, setRoomId] = useState("");
   const { toast } = useToast();
 
@@ -23,9 +24,7 @@ export default function JoinRoomForm({ onJoin }: Props) {
     }
 
     try {
-      window.location.href = window.location.pathname.includes('technician') 
-        ? `/technician/${roomId}`
-        : `/musician/${roomId}`;
+      window.location.href = `/${role}/${roomId}`;
     } catch (error) {
       toast({
         title: "Error",

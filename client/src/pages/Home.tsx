@@ -28,7 +28,7 @@ export default function Home() {
           </Tabs>
 
           <div className="mt-6">
-            <JoinRoomForm onJoin={handleJoinRoom} />
+            <JoinRoomForm onJoin={handleJoinRoom} role={role} />
           </div>
         </CardContent>
       </Card>
