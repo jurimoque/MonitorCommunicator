@@ -4,11 +4,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { INSTRUMENTS, INSTRUMENT_COLORS } from "@/lib/constants";
 
-const INSTRUMENTS = [
-  "Batería", "Bajo", "Guitarra", "Teclados",
-  "Voz Principal", "Coros", "Percusión"
-];
-
 interface Props {
   currentInstrument: string;
   onInstrumentSelect: (instrument: string) => void;

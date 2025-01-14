@@ -15,78 +15,66 @@ export function useWebSocket(roomId: string) {
   const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    console.log('[WebSocket] Iniciando conexión para sala:', roomId);
-
-    // Crear socket con configuración básica
-    const socketIo = io({
+    const socket = io("/music-room", {
       path: '/ws',
-      query: { roomId }
+      query: { roomId },
+      transports: ['websocket'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
-    // Manejar conexión
-    socketIo.on("connect", () => {
-      console.log('[WebSocket] Conectado');
+    socket.on("connect", () => {
+      console.log('Conectado al servidor');
       setConnected(true);
     });
 
-    // Manejar desconexión
-    socketIo.on("disconnect", () => {
-      console.log('[WebSocket] Desconectado');
+    socket.on("disconnect", () => {
+      console.log('Desconectado del servidor');
       setConnected(false);
     });
 
-    // Manejar errores de conexión
-    socketIo.on("connect_error", (error) => {
-      console.error('[WebSocket] Error de conexión:', error);
-      setConnected(false);
+    socket.on("joined", (data) => {
+      console.log('Unido a sala:', data);
     });
 
-    // Manejar unión a sala
-    socketIo.on("joined", (data) => {
-      console.log('[WebSocket] Unido a sala:', data);
-    });
-
-    // Manejar peticiones iniciales
-    socketIo.on("initialRequests", (requests) => {
-      console.log('[WebSocket] Peticiones iniciales:', requests);
+    socket.on("initialRequests", (requests) => {
+      console.log('Peticiones iniciales:', requests);
       if (Array.isArray(requests)) {
         setMessages(requests.filter(req => !req.completed));
       }
     });
 
-    // Manejar nuevas peticiones
-    socketIo.on("newRequest", (request) => {
-      console.log('[WebSocket] Nueva petición:', request);
+    socket.on("newRequest", (request) => {
+      console.log('Nueva petición:', request);
       setMessages(prev => {
-        if (!request || prev.some(msg => msg.id === request.id)) {
-          return prev;
-        }
+        if (!request) return prev;
         return [...prev, request];
       });
     });
 
-    setSocket(socketIo);
+    socket.on("error", (error) => {
+      console.error('Error:', error);
+    });
 
-    // Limpiar al desmontar
+    setSocket(socket);
+
     return () => {
-      console.log('[WebSocket] Limpiando conexión');
-      socketIo.disconnect();
+      socket.disconnect();
     };
   }, [roomId]);
 
-  // Función para enviar mensajes
   const sendMessage = useCallback((message: SocketRequest) => {
     if (!socket?.connected) {
-      console.error('[WebSocket] No conectado, no se puede enviar mensaje');
+      console.error('No se puede enviar el mensaje: socket desconectado');
       return false;
     }
 
     try {
-      console.log('[WebSocket] Enviando petición:', message);
+      console.log('Enviando petición:', message);
       socket.emit("request", message);
       return true;
     } catch (error) {
-      console.error('[WebSocket] Error enviando petición:', error);
+      console.error('Error enviando petición:', error);
       return false;
     }
   }, [socket]);

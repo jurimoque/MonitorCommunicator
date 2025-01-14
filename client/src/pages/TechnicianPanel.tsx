@@ -7,7 +7,6 @@ import { AlertCircle } from "lucide-react";
 import RequestQueue from "@/components/RequestQueue";
 import { useWebSocket } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
-import { useToast } from "@/hooks/use-toast";
 
 interface Request {
   id: number;
@@ -37,9 +36,9 @@ export default function TechnicianPanel() {
           method: 'POST'
         })
       ));
-      
+
       setRequests([]);
-      
+
       toast({
         title: "Cola limpiada",
         description: "Se han completado todas las peticiones",
