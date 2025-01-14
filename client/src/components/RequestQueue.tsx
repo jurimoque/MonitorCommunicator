@@ -46,19 +46,7 @@ export default function RequestQueue({ requests, roomId }: Props) {
     }
   };
 
-  const getActionText = (action: string) => {
-    switch (action) {
-      case 'volume_up': return 'Subir volumen';
-      case 'volume_down': return 'Bajar volumen';
-      case 'reverb_up': return 'Subir reverb';
-      case 'reverb_down': return 'Bajar reverb';
-      default: return action;
-    }
-  };
-
-  console.log('Renderizando RequestQueue con peticiones:', requests);
   const activeRequests = requests.filter(r => !completedIds.includes(r.id) && !r.completed);
-  console.log('Peticiones activas:', activeRequests);
 
   return (
     <div className="space-y-4">

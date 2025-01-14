@@ -2,12 +2,14 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { db } from "@db";
-import { rooms } from "@db/schema";
+import { rooms, requests } from "@db/schema";
+import { eq } from "drizzle-orm";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupWebSocket } from "./websocket";
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Middleware de logging
 app.use((req, res, next) => {
@@ -43,11 +45,9 @@ app.use((req, res, next) => {
 // API Routes
 app.post("/api/rooms", async (req, res) => {
   try {
-    console.log("[API] Creando sala:", req.body);
     const [room] = await db.insert(rooms)
       .values({ name: req.body.name || 'Sala sin nombre' })
       .returning();
-    console.log("[API] Sala creada:", room);
     res.json(room);
   } catch (error) {
     console.error("[API] Error creando sala:", error);
@@ -55,6 +55,21 @@ app.post("/api/rooms", async (req, res) => {
   }
 });
 
+app.post("/api/rooms/:roomId/requests/:requestId/complete", async (req, res) => {
+  try {
+    const { roomId, requestId } = req.params;
+    await db.update(requests)
+      .set({ completed: true })
+      .where(eq(requests.id, parseInt(requestId, 10)))
+      .returning();
+    res.json({ message: "Petición completada" });
+  } catch (error) {
+    console.error("[API] Error completando petición:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// Error handling middleware
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error("[Error]", err);
   res.status(500).json({ message: "Error interno del servidor" });
@@ -74,14 +89,16 @@ const io = new Server(server, {
 setupWebSocket(io);
 
 // Setup Vite or static files
-if (app.get("env") === "development") {
-  setupVite(app, server).catch(console.error);
-} else {
-  serveStatic(app);
-}
+(async () => {
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
 
-// Start server
-const PORT = 5000;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
-});
+  // Start server
+  const PORT = 5000;
+  server.listen(PORT, "0.0.0.0", () => {
+    log(`Servidor escuchando en puerto ${PORT}`);
+  });
+})();
