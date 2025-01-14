@@ -1,11 +1,9 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { db } from "@db";
-import { rooms, requests } from "@db/schema";
-import { eq } from "drizzle-orm";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupWebSocket } from "./websocket";
+import { registerRoutes } from "./routes";
 
 const app = express();
 
@@ -44,99 +42,125 @@ app.use((req, res, next) => {
   next();
 });
 
-// API Routes
-app.post("/api/rooms", async (req, res) => {
-  try {
-    const [room] = await db.insert(rooms)
-      .values({ name: req.body.name || 'Sala sin nombre' })
-      .returning();
-    res.json(room);
-  } catch (error) {
-    console.error("[API] Error creando sala:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
-  }
-});
-
-app.post("/api/rooms/:roomId/requests/:requestId/complete", async (req, res) => {
-  try {
-    const { roomId, requestId } = req.params;
-    await db.update(requests)
-      .set({ completed: true })
-      .where(eq(requests.id, parseInt(requestId, 10)))
-      .returning();
-    res.json({ message: "Petición completada" });
-  } catch (error) {
-    console.error("[API] Error completando petición:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
-  }
-});
-
 // Error handling middleware
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error("[Error]", err);
-  res.status(500).json({ message: "Error interno del servidor" });
+  const errorMessage = app.get("env") === "development" ? err.message : "Error interno del servidor";
+  res.status(err.status || 500).json({ message: errorMessage });
 });
+
+// Función para limpiar recursos del servidor
+async function cleanupServer(server: ReturnType<typeof createServer>, io?: Server) {
+  return new Promise<void>((resolve) => {
+    const cleanup = () => {
+      log("[Server] Servidor HTTP cerrado");
+      resolve();
+    };
+
+    if (io) {
+      io.close(() => {
+        log("[Server] Socket.IO cerrado");
+        server.close(cleanup);
+      });
+    } else {
+      server.close(cleanup);
+    }
+  });
+}
+
+// Función para crear y configurar el servidor
+async function createAndConfigureServer() {
+  try {
+    // Crear servidor HTTP y registrar rutas
+    const server = registerRoutes(app);
+    log("[Server] Servidor HTTP creado");
+
+    // Configurar Socket.IO
+    const io = new Server(server, {
+      path: '/ws',
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      },
+      transports: ['websocket', 'polling'],
+      pingTimeout: 10000,
+      pingInterval: 5000,
+      connectTimeout: 45000
+    });
+
+    // Setup WebSocket handlers
+    setupWebSocket(io);
+    log("[Server] WebSocket configurado");
+
+    // Setup Vite o archivos estáticos
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+      log("[Server] Vite configurado en modo desarrollo");
+    } else {
+      serveStatic(app);
+      log("[Server] Archivos estáticos configurados");
+    }
+
+    return { server, io };
+  } catch (error) {
+    log("[Server] Error en la configuración del servidor");
+    throw error;
+  }
+}
 
 // Inicialización del servidor con reintento de puertos
 async function startServer(initialPort: number, maxRetries: number = 5) {
   let currentPort = initialPort;
   let attempts = 0;
+  let serverInstance: { server: ReturnType<typeof createServer>; io: Server } | null = null;
 
   while (attempts < maxRetries) {
     try {
-      // Crear servidor HTTP
-      const server = createServer(app);
+      log(`[Server] Intento ${attempts + 1} de ${maxRetries} en puerto ${currentPort}`);
 
-      // Configurar Socket.IO después de crear el servidor HTTP
-      const io = new Server(server, {
-        path: '/ws',
-        cors: {
-          origin: "*",
-          methods: ["GET", "POST"]
-        },
-        transports: ['websocket', 'polling']
-      });
-
-      // Setup WebSocket handlers
-      setupWebSocket(io);
-
-      // Setup Vite o archivos estáticos
-      if (app.get("env") === "development") {
-        await setupVite(app, server);
-      } else {
-        serveStatic(app);
+      // Limpiar servidor anterior si existe
+      if (serverInstance) {
+        await cleanupServer(serverInstance.server, serverInstance.io);
+        serverInstance = null;
       }
+
+      // Crear y configurar nuevo servidor
+      serverInstance = await createAndConfigureServer();
+      const { server, io } = serverInstance;
 
       // Intentar iniciar el servidor
       await new Promise<void>((resolve, reject) => {
-        server.once('error', (err: any) => {
-          if (err.code === 'EADDRINUSE') {
-            log(`Puerto ${currentPort} en uso, intentando siguiente puerto...`);
-            currentPort++;
-            reject(err);
-          } else {
-            console.error(`[Server] Error al iniciar en puerto ${currentPort}:`, err);
-            reject(err);
-          }
-        });
+        const errorHandler = (error: Error) => {
+          server.removeListener('error', errorHandler);
+          reject(error);
+        };
+
+        server.once('error', errorHandler);
 
         server.listen(currentPort, "0.0.0.0", () => {
-          log(`[Server] Servidor HTTP iniciado en puerto ${currentPort}`);
-          log(`[Server] Socket.IO configurado en path: /ws`);
+          server.removeListener('error', errorHandler);
+          log(`[Server] Servidor iniciado exitosamente en puerto ${currentPort}`);
           resolve();
         });
       });
 
-      // Si llegamos aquí, el servidor inició correctamente
-      return;
-    } catch (error) {
+      return; // Servidor iniciado correctamente
+    } catch (error: any) {
       attempts++;
-      if (attempts === maxRetries) {
-        console.error("[Server] Error fatal al iniciar después de múltiples intentos:", error);
-        process.exit(1);
+
+      if (error.code === 'EADDRINUSE') {
+        log(`[Server] Puerto ${currentPort} en uso, intentando puerto ${currentPort + 1}...`);
+        currentPort++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        console.error(`[Server] Error inesperado:`, error);
+        if (attempts === maxRetries) {
+          if (serverInstance) {
+            await cleanupServer(serverInstance.server, serverInstance.io);
+          }
+          throw new Error(`No se pudo iniciar el servidor después de ${maxRetries} intentos: ${error.message}`);
+        }
       }
-      // Esperar un momento antes de reintentar
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 }
