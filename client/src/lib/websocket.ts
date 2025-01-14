@@ -15,36 +15,44 @@ export function useWebSocket(roomId: string) {
   const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    const socket = io("/music-room", {
+    // Crear una nueva instancia de Socket.IO
+    const newSocket = io("/music-room", {
       path: '/ws',
       query: { roomId },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'], // Añadimos polling como fallback
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      autoConnect: true // Aseguramos que intente conectar automáticamente
     });
 
-    socket.on("connect", () => {
-      console.log('Conectado al servidor');
+    // Manejadores de eventos
+    newSocket.on("connect", () => {
+      console.log('Conectado al servidor de WebSocket');
       setConnected(true);
     });
 
-    socket.on("disconnect", () => {
-      console.log('Desconectado del servidor');
+    newSocket.on("disconnect", () => {
+      console.log('Desconectado del servidor de WebSocket');
       setConnected(false);
     });
 
-    socket.on("joined", (data) => {
+    newSocket.on("connect_error", (error: Error) => {
+      console.error('Error de conexión WebSocket:', error);
+      setConnected(false);
+    });
+
+    newSocket.on("joined", (data: any) => {
       console.log('Unido a sala:', data);
     });
 
-    socket.on("initialRequests", (requests) => {
+    newSocket.on("initialRequests", (requests: any[]) => {
       console.log('Peticiones iniciales:', requests);
       if (Array.isArray(requests)) {
         setMessages(requests.filter(req => !req.completed));
       }
     });
 
-    socket.on("newRequest", (request) => {
+    newSocket.on("newRequest", (request: any) => {
       console.log('Nueva petición:', request);
       setMessages(prev => {
         if (!request) return prev;
@@ -52,14 +60,16 @@ export function useWebSocket(roomId: string) {
       });
     });
 
-    socket.on("error", (error) => {
-      console.error('Error:', error);
+    newSocket.on("error", (error: any) => {
+      console.error('Error de WebSocket:', error);
     });
 
-    setSocket(socket);
+    setSocket(newSocket);
 
+    // Cleanup al desmontar
     return () => {
-      socket.disconnect();
+      console.log('Limpiando conexión WebSocket');
+      newSocket.disconnect();
     };
   }, [roomId]);
 

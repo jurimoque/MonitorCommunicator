@@ -8,6 +8,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { setupWebSocket } from "./websocket";
 
 const app = express();
+
+// Configuración básica de Express
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -75,30 +77,72 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ message: "Error interno del servidor" });
 });
 
-// Create server and Socket.IO instance
-const server = createServer(app);
-const io = new Server(server, {
-  path: '/ws',
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+// Inicialización del servidor con reintento de puertos
+async function startServer(initialPort: number, maxRetries: number = 5) {
+  let currentPort = initialPort;
+  let attempts = 0;
+
+  while (attempts < maxRetries) {
+    try {
+      // Crear servidor HTTP
+      const server = createServer(app);
+
+      // Configurar Socket.IO después de crear el servidor HTTP
+      const io = new Server(server, {
+        path: '/ws',
+        cors: {
+          origin: "*",
+          methods: ["GET", "POST"]
+        },
+        transports: ['websocket', 'polling']
+      });
+
+      // Setup WebSocket handlers
+      setupWebSocket(io);
+
+      // Setup Vite o archivos estáticos
+      if (app.get("env") === "development") {
+        await setupVite(app, server);
+      } else {
+        serveStatic(app);
+      }
+
+      // Intentar iniciar el servidor
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', (err: any) => {
+          if (err.code === 'EADDRINUSE') {
+            log(`Puerto ${currentPort} en uso, intentando siguiente puerto...`);
+            currentPort++;
+            reject(err);
+          } else {
+            console.error(`[Server] Error al iniciar en puerto ${currentPort}:`, err);
+            reject(err);
+          }
+        });
+
+        server.listen(currentPort, "0.0.0.0", () => {
+          log(`[Server] Servidor HTTP iniciado en puerto ${currentPort}`);
+          log(`[Server] Socket.IO configurado en path: /ws`);
+          resolve();
+        });
+      });
+
+      // Si llegamos aquí, el servidor inició correctamente
+      return;
+    } catch (error) {
+      attempts++;
+      if (attempts === maxRetries) {
+        console.error("[Server] Error fatal al iniciar después de múltiples intentos:", error);
+        process.exit(1);
+      }
+      // Esperar un momento antes de reintentar
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
+}
+
+// Iniciar el servidor
+startServer(5000).catch(error => {
+  console.error("[Server] Error fatal:", error);
+  process.exit(1);
 });
-
-// Setup WebSocket handlers
-setupWebSocket(io);
-
-// Setup Vite or static files
-(async () => {
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // Start server
-  const PORT = 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`Servidor escuchando en puerto ${PORT}`);
-  });
-})();
