@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { db } from "@db";
 import { rooms, requests } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { log } from "./vite";
 
 interface RequestData {
   roomId: string;
@@ -15,7 +16,7 @@ export function setupWebSocket(io: SocketIOServer) {
   const musicRoom = io.of("/music-room");
 
   musicRoom.on("connection", async (socket) => {
-    console.log(`[Socket.IO] Cliente conectado: ${socket.id}`);
+    log(`[Socket.IO] Cliente conectado: ${socket.id}`);
 
     try {
       // Manejar unirse a sala directamente desde la query de conexión
@@ -25,14 +26,6 @@ export function setupWebSocket(io: SocketIOServer) {
       }
 
       // Eventos del socket
-      socket.on("join", async (roomId: string) => {
-        try {
-          await handleRoomJoin(socket, roomId);
-        } catch (error) {
-          handleError(socket, error);
-        }
-      });
-
       socket.on("request", async (data: RequestData) => {
         try {
           await handleRequest(socket, data);
@@ -41,21 +34,8 @@ export function setupWebSocket(io: SocketIOServer) {
         }
       });
 
-      socket.on("completeRequest", async (requestId: number) => {
-        try {
-          await handleCompleteRequest(socket, requestId);
-        } catch (error) {
-          handleError(socket, error);
-        }
-      });
-
       socket.on("disconnect", (reason) => {
-        console.log(`[Socket.IO] Cliente desconectado: ${socket.id}, razón: ${reason}`);
-      });
-
-      socket.on("error", (error) => {
-        console.error(`[Socket.IO] Error en socket ${socket.id}:`, error);
-        handleError(socket, error);
+        log(`[Socket.IO] Cliente desconectado: ${socket.id}, razón: ${reason}`);
       });
 
     } catch (error) {
@@ -80,7 +60,7 @@ export function setupWebSocket(io: SocketIOServer) {
 
     // Unirse a la sala de Socket.IO
     await socket.join(roomId);
-    console.log(`[Socket.IO] Cliente ${socket.id} unido a sala ${roomId}`);
+    log(`[Socket.IO] Cliente ${socket.id} unido a sala ${roomId}`);
 
     // Obtener y enviar peticiones pendientes
     const pendingRequests = await db.query.requests.findMany({
@@ -89,7 +69,8 @@ export function setupWebSocket(io: SocketIOServer) {
 
     socket.emit("joined", {
       roomId,
-      name: room.name
+      name: room.name,
+      timestamp: new Date().toISOString()
     });
 
     const activeRequests = pendingRequests.filter(req => !req.completed);
@@ -122,33 +103,15 @@ export function setupWebSocket(io: SocketIOServer) {
       })
       .returning();
 
-    // Confirmar al emisor
-    socket.emit("requestConfirmed", newRequest);
+    log(`[Socket.IO] Nueva petición creada en sala ${roomIdNum}: ${JSON.stringify(newRequest)}`);
 
     // Notificar a todos en la sala
     musicRoom.to(data.roomId).emit("newRequest", newRequest);
-
-    console.log(`[Socket.IO] Nueva petición creada en sala ${roomIdNum}:`, newRequest);
-  }
-
-  async function handleCompleteRequest(socket: any, requestId: number) {
-    const [updatedRequest] = await db.update(requests)
-      .set({ completed: true })
-      .where(eq(requests.id, requestId))
-      .returning();
-
-    if (updatedRequest) {
-      musicRoom.emit("requestCompleted", { requestId });
-      console.log(`[Socket.IO] Petición ${requestId} completada`);
-    } else {
-      throw new Error("Petición no encontrada");
-    }
   }
 
   function handleError(socket: any, error: unknown) {
-    console.error("[Socket.IO] Error:", error);
-    socket.emit("error", {
-      message: error instanceof Error ? error.message : "Error interno del servidor"
-    });
+    const errorMessage = error instanceof Error ? error.message : "Error interno del servidor";
+    log(`[Socket.IO] Error: ${errorMessage}`);
+    socket.emit("error", { message: errorMessage });
   }
 }
