@@ -31,7 +31,7 @@ export default function RequestQueue({ requests, roomId }: Props) {
         throw new Error('Error al completar la petición');
       }
 
-      setCompletedIds(prev => [...prev, requestId]);
+      // Ya no necesitamos rastrear IDs localmente porque el WebSocket actualizará el estado
       toast({
         title: "Petición completada",
         description: "La petición ha sido marcada como completada"
@@ -46,7 +46,9 @@ export default function RequestQueue({ requests, roomId }: Props) {
     }
   };
 
-  const activeRequests = requests.filter(r => !completedIds.includes(r.id) && !r.completed);
+  // Ahora solo filtramos las peticiones completadas según la propiedad completed
+  // El WebSocket ya filtra las completadas, pero por seguridad lo hacemos aquí también
+  const activeRequests = requests.filter(r => !r.completed);
 
   return (
     <div className="space-y-4">

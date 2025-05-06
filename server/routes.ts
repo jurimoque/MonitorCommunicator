@@ -60,7 +60,7 @@ export function registerRoutes(app: Express): Server {
         return;
       }
 
-      const [updatedRequests] = await db.update(requests)
+      const updatedRequests = await db.update(requests)
         .set({ completed: true })
         .where(eq(requests.roomId, roomIdNum))
         .returning();
@@ -73,7 +73,7 @@ export function registerRoutes(app: Express): Server {
         }));
       }
       
-      res.json({ message: "Todas las peticiones completadas", count: updatedRequests?.length || 0 });
+      res.json({ message: "Todas las peticiones completadas", count: updatedRequests ? updatedRequests.length : 0 });
     } catch (error) {
       console.error("[API] Error limpiando peticiones:", error);
       next(error);

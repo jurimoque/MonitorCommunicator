@@ -1,8 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { createServer } from "http";
-import { Server } from "socket.io";
+import { createServer, type Server } from "http";
 import { setupVite, serveStatic, log } from "./vite";
-import { setupWebSocket } from "./websocket";
 import { registerRoutes } from "./routes";
 
 const app = express();
@@ -50,47 +48,21 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // Función para limpiar recursos del servidor
-async function cleanupServer(server: ReturnType<typeof createServer>, io?: Server) {
+async function cleanupServer(server: Server) {
   return new Promise<void>((resolve) => {
-    const cleanup = () => {
+    server.close(() => {
       log("[Server] Servidor HTTP cerrado");
       resolve();
-    };
-
-    if (io) {
-      io.close(() => {
-        log("[Server] Socket.IO cerrado");
-        server.close(cleanup);
-      });
-    } else {
-      server.close(cleanup);
-    }
+    });
   });
 }
 
 // Función para crear y configurar el servidor
 async function createAndConfigureServer() {
   try {
-    // Crear servidor HTTP y registrar rutas
+    // Crear servidor HTTP y registrar rutas (WebSocket ya está configurado dentro de registerRoutes)
     const server = registerRoutes(app);
-    log("[Server] Servidor HTTP creado");
-
-    // Configurar Socket.IO
-    const io = new Server(server, {
-      path: '/ws',
-      cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-      },
-      transports: ['websocket', 'polling'],
-      pingTimeout: 10000,
-      pingInterval: 5000,
-      connectTimeout: 45000
-    });
-
-    // Setup WebSocket handlers
-    setupWebSocket(io);
-    log("[Server] WebSocket configurado");
+    log("[Server] Servidor HTTP y WebSocket creados");
 
     // Setup Vite o archivos estáticos
     if (app.get("env") === "development") {
@@ -101,7 +73,7 @@ async function createAndConfigureServer() {
       log("[Server] Archivos estáticos configurados");
     }
 
-    return { server, io };
+    return server;
   } catch (error) {
     log("[Server] Error en la configuración del servidor");
     throw error;
@@ -112,33 +84,37 @@ async function createAndConfigureServer() {
 async function startServer(initialPort: number, maxRetries: number = 5) {
   let currentPort = initialPort;
   let attempts = 0;
-  let serverInstance: { server: ReturnType<typeof createServer>; io: Server } | null = null;
+  let server: Server | null = null;
 
   while (attempts < maxRetries) {
     try {
       log(`[Server] Intento ${attempts + 1} de ${maxRetries} en puerto ${currentPort}`);
 
       // Limpiar servidor anterior si existe
-      if (serverInstance) {
-        await cleanupServer(serverInstance.server, serverInstance.io);
-        serverInstance = null;
+      if (server) {
+        await cleanupServer(server);
+        server = null;
       }
 
       // Crear y configurar nuevo servidor
-      serverInstance = await createAndConfigureServer();
-      const { server, io } = serverInstance;
+      server = await createAndConfigureServer();
 
       // Intentar iniciar el servidor
       await new Promise<void>((resolve, reject) => {
+        if (!server) {
+          reject(new Error("No se pudo crear el servidor"));
+          return;
+        }
+        
         const errorHandler = (error: Error) => {
-          server.removeListener('error', errorHandler);
+          server?.removeListener('error', errorHandler);
           reject(error);
         };
 
         server.once('error', errorHandler);
 
         server.listen(currentPort, "0.0.0.0", () => {
-          server.removeListener('error', errorHandler);
+          server?.removeListener('error', errorHandler);
           log(`[Server] Servidor iniciado exitosamente en puerto ${currentPort}`);
           resolve();
         });
@@ -155,8 +131,8 @@ async function startServer(initialPort: number, maxRetries: number = 5) {
       } else {
         console.error(`[Server] Error inesperado:`, error);
         if (attempts === maxRetries) {
-          if (serverInstance) {
-            await cleanupServer(serverInstance.server, serverInstance.io);
+          if (server) {
+            await cleanupServer(server);
           }
           throw new Error(`No se pudo iniciar el servidor después de ${maxRetries} intentos: ${error.message}`);
         }

@@ -31,14 +31,15 @@ export default function TechnicianPanel() {
 
   const clearAllRequests = async () => {
     try {
-      await Promise.all(requests.map(request => 
-        fetch(`/api/rooms/${roomId}/requests/${request.id}/complete`, {
-          method: 'POST'
-        })
-      ));
+      const response = await fetch(`/api/rooms/${roomId}/requests/clear`, {
+        method: 'POST'
+      });
 
-      setRequests([]);
+      if (!response.ok) {
+        throw new Error('Error al limpiar la cola');
+      }
 
+      // El WebSocket actualizará el estado automáticamente
       toast({
         title: "Cola limpiada",
         description: "Se han completado todas las peticiones",
