@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { db } from "@db";
 import { rooms, requests } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { requestSchema, RequestData } from "./websocket";
 
 export function registerRoutes(app: Express): Server {
   // API Routes
@@ -160,17 +161,17 @@ export function registerRoutes(app: Express): Server {
           const data = JSON.parse(message.toString());
           
           if (data.type === 'request') {
-            // Insert new request
-            const requestData = data.data;
-            const roomIdNum = parseInt(requestData.roomId, 10);
+            // Validar datos de la petición
+            const validatedData = requestSchema.parse(data.data);
+            const roomIdNum = parseInt(validatedData.roomId, 10);
             
             const [newRequest] = await db.insert(requests)
               .values({
                 roomId: roomIdNum,
-                musician: requestData.musician,
-                instrument: requestData.instrument,
-                targetInstrument: requestData.targetInstrument,
-                action: requestData.action,
+                musician: validatedData.musician,
+                instrument: validatedData.instrument,
+                targetInstrument: validatedData.targetInstrument,
+                action: validatedData.action,
               })
               .returning();
             
