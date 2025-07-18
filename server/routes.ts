@@ -89,7 +89,24 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Setup WebSocket server on a distinct path
-  const wss = new WebSocketServer({ server: server, path: '/ws' });
+  const wss = new WebSocketServer({ 
+    server: server, 
+    path: '/ws',
+    perMessageDeflate: false,
+    maxPayload: 16 * 1024 * 1024,
+    clientTracking: true,
+    verifyClient: (info) => {
+      console.log('[WebSocket] Verificando cliente:', info.origin, info.req.url);
+      return true; // Accept all connections for now
+    }
+  });
+  
+  console.log('[WebSocket] Servidor WebSocket configurado en path /ws');
+  
+  // Handle WebSocket server errors
+  wss.on('error', (error) => {
+    console.error('[WebSocket] Error en servidor WebSocket:', error);
+  });
   
   // Track clients by room
   const roomClients: Map<string, Set<WebSocket>> = new Map();
@@ -108,10 +125,14 @@ export function registerRoutes(app: Express): Server {
   
   wss.on('connection', async (ws, req) => {
     console.log('[WebSocket] Cliente conectado');
+    console.log('[WebSocket] Request URL:', req.url);
+    console.log('[WebSocket] Request headers:', req.headers);
     
     // Parse the URL to get the roomId
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const roomId = url.searchParams.get('roomId');
+    
+    console.log('[WebSocket] Room ID extraído:', roomId);
     
     if (!roomId) {
       console.log('[WebSocket] Cliente sin roomId');
@@ -125,15 +146,17 @@ export function registerRoutes(app: Express): Server {
         throw new Error("RoomId debe ser un número");
       }
       
-      // Check if room exists
-      const room = await db.query.rooms.findFirst({
+      // Check if room exists, if not create it
+      let room = await db.query.rooms.findFirst({
         where: eq(rooms.id, roomIdNum)
       });
       
       if (!room) {
-        console.log(`[WebSocket] Sala ${roomId} no encontrada`);
-        ws.close(1008, 'Sala no encontrada');
-        return;
+        console.log(`[WebSocket] Sala ${roomId} no encontrada, creando nueva sala`);
+        [room] = await db.insert(rooms)
+          .values({ name: `Sala ${roomId}` })
+          .returning();
+        console.log(`[WebSocket] Nueva sala creada: ${room.name}`);
       }
       
       // Add client to room
@@ -149,6 +172,8 @@ export function registerRoutes(app: Express): Server {
       
       // Filter only non-completed requests
       const activeRequests = pendingRequests.filter(req => !req.completed);
+      
+      console.log(`[WebSocket] Enviando ${activeRequests.length} peticiones activas de ${pendingRequests.length} totales`);
       
       ws.send(JSON.stringify({
         type: 'initialRequests',

@@ -30,6 +30,16 @@ export default function Home() {
           <div className="mt-6">
             <JoinRoomForm onJoin={handleJoinRoom} role={role} />
           </div>
+          
+          <div className="mt-4 text-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setLocation("/test")}
+              className="text-sm"
+            >
+              Test WebSocket Connection
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

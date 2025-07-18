@@ -22,7 +22,16 @@ export function useWebSocket(roomId: string) {
   useEffect(() => {
     // Crear una nueva instancia de WebSocket nativo
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?roomId=${roomId}`;
+    
+    // En desarrollo, usar el puerto correcto del servidor
+    let host = window.location.host;
+    if (import.meta.env.DEV) {
+      // En desarrollo, forzar el puerto 5000 donde está el servidor
+      host = window.location.hostname + ':5000';
+    }
+    
+    const wsUrl = `${protocol}//${host}/ws?roomId=${roomId}`;
+    console.log('Conectando WebSocket a:', wsUrl);
     const newSocket = new WebSocket(wsUrl);
 
     // Manejadores de eventos

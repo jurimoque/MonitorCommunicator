@@ -7,12 +7,14 @@ import { Toaster } from "@/components/ui/toaster";
 import Home from "./pages/Home";
 import MusicianPanel from "./pages/MusicianPanel";
 import TechnicianPanel from "./pages/TechnicianPanel";
+import TestConnection from "./pages/TestConnection";
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/test" component={TestConnection} />
         <Route path="/musician/:roomId" component={MusicianPanel} />
         <Route path="/technician/:roomId" component={TechnicianPanel} />
         <Route component={NotFound} />
