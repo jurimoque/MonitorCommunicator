@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { INSTRUMENTS, INSTRUMENT_COLORS } from "@/lib/constants";
+import { Input } from "@/components/ui/input";
+import { INSTRUMENTS, getInstrumentColor } from "@/lib/constants";
 
 interface Props {
   currentInstrument: string;
@@ -13,6 +14,8 @@ interface Props {
 export default function RequestForm({ currentInstrument, onInstrumentSelect, onRequest }: Props) {
   const [targetInstrument, setTargetInstrument] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customInstrument, setCustomInstrument] = useState("");
   const { toast } = useToast();
 
   const getActionText = (action: string): string => {
@@ -54,22 +57,78 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
     }
   };
 
+  const handleCustomInstrumentSubmit = () => {
+    if (customInstrument.trim()) {
+      onInstrumentSelect(customInstrument.trim());
+      setCustomInstrument("");
+      setShowCustomInput(false);
+    }
+  };
+
   if (!currentInstrument) {
     return (
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Selecciona tu instrumento</h2>
-        <Select onValueChange={onInstrumentSelect}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecciona tu instrumento" />
-          </SelectTrigger>
-          <SelectContent>
-            {INSTRUMENTS.map((inst) => (
-              <SelectItem key={inst} value={inst}>
-                {inst}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        
+        {!showCustomInput ? (
+          <>
+            <Select onValueChange={onInstrumentSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona tu instrumento" />
+              </SelectTrigger>
+              <SelectContent>
+                {INSTRUMENTS.map((inst) => (
+                  <SelectItem key={inst} value={inst}>
+                    {inst}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="text-center">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCustomInput(true)}
+                className="w-full"
+              >
+                + Crear instrumento personalizado
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <Input
+              value={customInstrument}
+              onChange={(e) => setCustomInstrument(e.target.value)}
+              placeholder="Nombre del instrumento (ej: Saxofón, Violín, etc.)"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleCustomInstrumentSubmit();
+                }
+              }}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleCustomInstrumentSubmit}
+                disabled={!customInstrument.trim()}
+                className="flex-1"
+              >
+                Confirmar
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCustomInput(false);
+                  setCustomInstrument("");
+                }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -94,8 +153,8 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                 : 'hover:scale-105'
             }`}
             style={{
-              backgroundColor: INSTRUMENT_COLORS[currentInstrument].bg,
-              color: INSTRUMENT_COLORS[currentInstrument].text
+              backgroundColor: getInstrumentColor(currentInstrument).bg,
+              color: getInstrumentColor(currentInstrument).text
             }}
           >
             YO ({currentInstrument})
@@ -111,8 +170,8 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                   : 'hover:scale-105'
               }`}
               style={{
-                backgroundColor: INSTRUMENT_COLORS[inst].bg,
-                color: INSTRUMENT_COLORS[inst].text
+                backgroundColor: getInstrumentColor(inst).bg,
+                color: getInstrumentColor(inst).text
               }}
             >
               {inst}

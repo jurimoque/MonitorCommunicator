@@ -14,7 +14,15 @@ export default function TestConnection() {
 
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?roomId=1`;
+    
+    // En desarrollo, usar el puerto correcto del servidor
+    let host = window.location.host;
+    if (import.meta.env.DEV) {
+      // En desarrollo, forzar el puerto 5000 donde está el servidor
+      host = window.location.hostname + ':5000';
+    }
+    
+    const wsUrl = `${protocol}//${host}/ws?roomId=1`;
     
     addLog(`Intentando conectar a: ${wsUrl}`);
     
