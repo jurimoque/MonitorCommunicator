@@ -3,11 +3,40 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { db } from "@db";
 import { rooms, requests } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { requestSchema, RequestData } from "./websocket";
 
 export function registerRoutes(app: Express): Server {
   // API Routes
+  // Buscar o crear sala
+  app.post("/api/rooms/find-or-create", async (req, res, next) => {
+    try {
+      const roomName = req.body.name || 'Sala sin nombre';
+      
+      // Primero buscar si ya existe una sala con ese nombre
+      const existingRoom = await db.query.rooms.findFirst({
+        where: eq(rooms.name, roomName)
+      });
+      
+      if (existingRoom) {
+        console.log(`[API] Sala encontrada: ${existingRoom.name} (ID: ${existingRoom.id})`);
+        res.json({ ...existingRoom, isExisting: true });
+        return;
+      }
+      
+      // Si no existe, crear nueva sala
+      const [room] = await db.insert(rooms)
+        .values({ name: roomName })
+        .returning();
+      console.log(`[API] Nueva sala creada: ${room.name} (ID: ${room.id})`);
+      res.json({ ...room, isExisting: false });
+    } catch (error) {
+      console.error("[API] Error buscando/creando sala:", error);
+      next(error);
+    }
+  });
+
+  // Crear sala nueva (forzar)
   app.post("/api/rooms", async (req, res, next) => {
     try {
       const [room] = await db.insert(rooms)
@@ -16,6 +45,30 @@ export function registerRoutes(app: Express): Server {
       res.json(room);
     } catch (error) {
       console.error("[API] Error creando sala:", error);
+      next(error);
+    }
+  });
+  
+  // Buscar salas por nombre
+  app.get("/api/rooms/search", async (req, res, next) => {
+    try {
+      const name = req.query.name as string;
+      if (!name) {
+        res.status(400).json({ message: "Nombre requerido" });
+        return;
+      }
+      
+      const room = await db.query.rooms.findFirst({
+        where: eq(rooms.name, name)
+      });
+      
+      if (room) {
+        res.json(room);
+      } else {
+        res.status(404).json({ message: "Sala no encontrada" });
+      }
+    } catch (error) {
+      console.error("[API] Error buscando sala:", error);
       next(error);
     }
   });
@@ -95,7 +148,7 @@ export function registerRoutes(app: Express): Server {
     perMessageDeflate: false,
     maxPayload: 16 * 1024 * 1024,
     clientTracking: true,
-    verifyClient: (info) => {
+    verifyClient: (info: any) => {
       console.log('[WebSocket] Verificando cliente:', info.origin, info.req.url);
       return true; // Accept all connections for now
     }

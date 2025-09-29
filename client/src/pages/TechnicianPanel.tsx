@@ -7,6 +7,7 @@ import { AlertCircle } from "lucide-react";
 import RequestQueue from "@/components/RequestQueue";
 import { useWebSocket } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface Request {
   id: number;
@@ -56,7 +57,11 @@ export default function TechnicianPanel() {
   };
 
   return (
-    <div className="min-h-screen p-4 bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className="min-h-screen p-4 bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      {/* Theme toggle en la esquina superior derecha */}
+      <div className="fixed top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Cola de Peticiones</CardTitle>
