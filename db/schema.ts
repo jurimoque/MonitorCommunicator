@@ -18,10 +18,20 @@ export const requests = pgTable("requests", {
   completed: boolean("completed").default(false),
 });
 
+export const customInstruments = pgTable("custom_instruments", {
+  id: serial("id").primaryKey(),
+  roomId: serial("room_id").references(() => rooms.id),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Room = typeof rooms.$inferSelect;
 export type Request = typeof requests.$inferSelect;
+export type CustomInstrument = typeof customInstruments.$inferSelect;
 
 export const insertRoomSchema = createInsertSchema(rooms);
 export const selectRoomSchema = createSelectSchema(rooms);
 export const insertRequestSchema = createInsertSchema(requests);
 export const selectRequestSchema = createSelectSchema(requests);
+export const insertCustomInstrumentSchema = createInsertSchema(customInstruments);
+export const selectCustomInstrumentSchema = createSelectSchema(customInstruments);
