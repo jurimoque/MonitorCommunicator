@@ -2,11 +2,31 @@
 
 ## Overview
 
-This is a real-time stage monitor control application that allows musicians to communicate with sound technicians during live performances. Musicians can request audio adjustments (volume, reverb) for their instruments and receive real-time feedback through a WebSocket-based system. The application features separate interfaces for musicians and technicians, with a PostgreSQL database for persistence and a modern React frontend with Express backend.
+This is a real-time stage monitor control application that allows musicians to communicate with sound technicians during live performances. Musicians can request audio adjustments (volume, reverb) for their instruments, send thanks confirmations, and request emergency assistance through a WebSocket-based system. The application features separate interfaces for musicians and technicians, with a PostgreSQL database for persistence, bilingual support (English/Spanish), custom instrument creation shared across all users, and a modern React frontend with Express backend.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Recent Updates (October 2025)
+
+### UI/UX Improvements
+- **Pastel Rainbow Gradient Design**: Updated theme with harmonious pastel colors (purple-pink-blue gradients)
+- **Light Typography**: Changed to font-light for a more elegant appearance throughout the app
+- **Consistent Button Sizing**: Unified text sizes across all volume and reverb buttons (text-xl)
+- **Dark Mode Support**: Persistent dark mode toggle with localStorage
+
+### New Features
+- **Bilingual Support**: Full English/Spanish language toggle with localStorage persistence
+- **Thanks Button**: Green confirmation button for musicians to thank technicians
+- **Emergency Assistance Button**: Red button for musicians to request urgent help
+- **Custom Instruments**: Room-shared custom instruments via database with real-time WebSocket propagation
+- **Reversed Notification Order**: Technician panel shows newest requests at the top (no scrolling needed)
+
+### Technical Implementation
+- **i18n System**: Translation hook with localStorage for language persistence
+- **Custom Instruments Table**: PostgreSQL table for storing room-specific instruments
+- **Enhanced WebSocket Messages**: Support for 'thanks' and 'assistance' action types
 
 ## System Architecture
 
