@@ -76,10 +76,10 @@ export default function TechnicianPanel() {
             {t('clearQueue')}
           </Button>
           {!connected && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="max-w-full">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>{t('noConnection')}</AlertTitle>
-              <AlertDescription>
+              <AlertDescription className="text-sm">
                 {t('reconnecting')}
               </AlertDescription>
             </Alert>

@@ -263,14 +263,14 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
             {/* Botones especiales */}
             <div className="grid grid-cols-2 gap-4 pt-2">
               <Button
-                className="h-16 text-lg font-light bg-green-500 hover:bg-green-600 text-white"
+                className="h-12 text-sm font-light bg-green-500 hover:bg-green-600 text-white"
                 onClick={() => handleRequest({ targetInstrument: currentInstrument, action: "thanks" })}
                 disabled={loading}
               >
                 {loading ? t('sending') : t('thanks')}
               </Button>
               <Button
-                className="h-16 text-lg font-light bg-red-500 hover:bg-red-600 text-white"
+                className="h-12 text-sm font-light bg-red-500 hover:bg-red-600 text-white"
                 onClick={() => handleRequest({ targetInstrument: currentInstrument, action: "assistance" })}
                 disabled={loading}
               >
