@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { INSTRUMENT_COLORS } from "@/lib/constants";
 
 interface Request {
@@ -20,6 +21,7 @@ interface Props {
 export default function RequestQueue({ requests, roomId }: Props) {
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const handleComplete = async (requestId: number) => {
     try {
@@ -33,14 +35,14 @@ export default function RequestQueue({ requests, roomId }: Props) {
 
       // Ya no necesitamos rastrear IDs localmente porque el WebSocket actualizará el estado
       toast({
-        title: "Petición completada",
-        description: "La petición ha sido marcada como completada"
+        title: t('requestCompleted'),
+        description: t('requestCompletedDesc')
       });
     } catch (error) {
       console.error('Error completando petición:', error);
       toast({
-        title: "Error",
-        description: "No se pudo completar la petición",
+        title: t('error'),
+        description: t('errorCompletingRequest'),
         variant: "destructive"
       });
     }
@@ -49,11 +51,14 @@ export default function RequestQueue({ requests, roomId }: Props) {
   // Ahora solo filtramos las peticiones completadas según la propiedad completed
   // El WebSocket ya filtra las completadas, pero por seguridad lo hacemos aquí también
   const activeRequests = requests.filter(r => !r.completed);
+  
+  // Invertir el orden para mostrar las más recientes arriba
+  const sortedRequests = [...activeRequests].reverse();
 
   return (
     <div className="space-y-4">
-      {activeRequests.length > 0 ? (
-        activeRequests.map((request) => (
+      {sortedRequests.length > 0 ? (
+        sortedRequests.map((request) => (
           <Card 
             key={request.id} 
             className="p-4 hover:shadow-md transition-shadow"
@@ -70,33 +75,42 @@ export default function RequestQueue({ requests, roomId }: Props) {
                 >
                   {request.musician}
                 </p>
-                <p className="text-xl font-semibold uppercase">
-                  <span style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
-                    {request.targetInstrument}
-                  </span>{' '}
-                  <span style={{ color: request.action.includes('up') ? '#ff0000' : '#00ff00' }}>
-                    {request.action.includes('up') ? '+' : '-'}
-                  </span>{' '}
-                  <span style={{ 
-                    color: request.action.includes('up') ? '#ff0000' : '#00ff00',
-                    fontSize: request.action.includes('reverb') ? '0.65em' : '1em'
-                  }}>
-                    {request.action.includes('reverb') ? 'REVERB' : 'VOLUMEN'}
-                  </span>
-                </p>
+                {request.action === 'thanks' ? (
+                  <p className="text-xl font-light" style={{ color: '#22c55e' }}>
+                    {t('thanksMessage')}
+                  </p>
+                ) : request.action === 'assistance' ? (
+                  <p className="text-xl font-light" style={{ color: '#ef4444' }}>
+                    {t('assistanceMessage')}
+                  </p>
+                ) : (
+                  <p className="text-xl font-semibold uppercase">
+                    <span style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
+                      {request.targetInstrument}
+                    </span>{' '}
+                    <span style={{ color: request.action.includes('up') ? '#ff0000' : '#00ff00' }}>
+                      {request.action.includes('up') ? '+' : '-'}
+                    </span>{' '}
+                    <span style={{ 
+                      color: request.action.includes('up') ? '#ff0000' : '#00ff00'
+                    }}>
+                      {request.action.includes('reverb') ? 'REVERB' : 'VOLUMEN'}
+                    </span>
+                  </p>
+                )}
               </div>
               <Button 
                 onClick={() => handleComplete(request.id)}
                 variant="secondary"
                 className="hover:bg-green-100"
               >
-                Completado
+                {t('completed')}
               </Button>
             </div>
           </Card>
         ))
       ) : (
-        <p className="text-center text-gray-500">No hay peticiones pendientes</p>
+        <p className="text-center text-gray-500">{t('noPendingRequests')}</p>
       )}
     </div>
   );

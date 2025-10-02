@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,17 +20,22 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customInstrument, setCustomInstrument] = useState("");
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const getActionText = (action: string): string => {
     switch (action) {
       case "volume_up":
-        return "subir el volumen";
+        return t('volumeUpAction');
       case "volume_down":
-        return "bajar el volumen";
+        return t('volumeDownAction');
       case "reverb_up":
-        return "aumentar el reverb";
+        return t('reverbUpAction');
       case "reverb_down":
-        return "disminuir el reverb";
+        return t('reverbDownAction');
+      case "thanks":
+        return t('thanksAction');
+      case "assistance":
+        return t('assistanceAction');
       default:
         return action;
     }
@@ -43,15 +49,15 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
     try {
       onRequest(request);
       toast({
-        title: "Petición enviada",
-        description: `Se ha enviado tu petición para ${getActionText(request.action)} de ${request.targetInstrument}`,
+        title: t('requestSent'),
+        description: `${t('requestSentDesc')} ${getActionText(request.action)} de ${request.targetInstrument}`,
         duration: 2000,
         className: "w-auto"
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "No se pudo enviar la petición. Por favor, inténtalo de nuevo.",
+        title: t('error'),
+        description: t('errorSendingRequest'),
         variant: "destructive",
       });
     } finally {
@@ -81,15 +87,15 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
       setShowCustomInput(false);
       
       toast({
-        title: "Instrumento creado",
-        description: `${instrumentName} ahora está disponible para todos en la sala`,
+        title: t('instrumentCreated'),
+        description: `${instrumentName} ${t('instrumentAvailable')}`,
         duration: 2000,
       });
     } catch (error) {
       console.error('Error guardando instrumento:', error);
       toast({
-        title: "Error",
-        description: "No se pudo guardar el instrumento personalizado. Inténtalo de nuevo.",
+        title: t('error'),
+        description: t('errorSavingInstrument'),
         variant: "destructive",
       });
     }
@@ -101,13 +107,13 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
     
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Selecciona tu instrumento</h2>
+        <h2 className="text-lg font-light">{t('selectInstrument')}</h2>
         
         {!showCustomInput ? (
           <>
             <Select onValueChange={onInstrumentSelect}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona tu instrumento" />
+                <SelectValue placeholder={t('selectInstrument')} />
               </SelectTrigger>
               <SelectContent>
                 {allAvailableInstruments.map((inst) => (
@@ -124,7 +130,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                 onClick={() => setShowCustomInput(true)}
                 className="w-full"
               >
-                + Crear instrumento personalizado
+                {t('createCustomInstrument')}
               </Button>
             </div>
           </>
@@ -133,7 +139,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
             <Input
               value={customInstrument}
               onChange={(e) => setCustomInstrument(e.target.value)}
-              placeholder="Nombre del instrumento (ej: Saxofón, Violín, etc.)"
+              placeholder={t('instrumentPlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleCustomInstrumentSubmit();
@@ -147,7 +153,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                 disabled={!customInstrument.trim()}
                 className="flex-1"
               >
-                Confirmar
+                {t('confirm')}
               </Button>
               <Button 
                 variant="outline" 
@@ -157,7 +163,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                 }}
                 className="flex-1"
               >
-                Cancelar
+                {t('cancel')}
               </Button>
             </div>
           </div>
@@ -173,9 +179,9 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold mb-2">Tu instrumento: {currentInstrument}</h2>
+        <h2 className="text-lg font-light mb-2">{t('yourInstrument')}: {currentInstrument}</h2>
         <Button variant="outline" onClick={() => onInstrumentSelect("")}>
-          Cambiar
+          {t('change')}
         </Button>
       </div>
 
@@ -194,7 +200,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
               color: getInstrumentColor(currentInstrument).text
             }}
           >
-            <span className="truncate px-1">YO ({currentInstrument})</span>
+            <span className="truncate px-1">{t('me')} ({currentInstrument})</span>
           </button>
           {/* Luego mostrar el resto de instrumentos */}
           {otherInstruments.map((inst) => (
@@ -217,40 +223,60 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
         </div>
 
         {targetInstrument && (
-          <div className="grid grid-cols-2 gap-4">
-            {/* Controles de Volumen - Bajar a la izquierda, Subir a la derecha */}
-            <Button
-              className="h-16 text-xl font-bold"
-              onClick={() => handleRequest({ targetInstrument, action: "volume_down" })}
-              disabled={loading}
-              variant="secondary"
-            >
-              {loading ? "ENVIANDO..." : "- VOLUMEN"}
-            </Button>
-            <Button
-              className="h-16 text-xl font-bold"
-              onClick={() => handleRequest({ targetInstrument, action: "volume_up" })}
-              disabled={loading}
-            >
-              {loading ? "ENVIANDO..." : "+ VOLUMEN"}
-            </Button>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Controles de Volumen - Bajar a la izquierda, Subir a la derecha */}
+              <Button
+                className="h-16 text-xl font-light"
+                onClick={() => handleRequest({ targetInstrument, action: "volume_down" })}
+                disabled={loading}
+                variant="secondary"
+              >
+                {loading ? t('sending') : t('volumeDown')}
+              </Button>
+              <Button
+                className="h-16 text-xl font-light"
+                onClick={() => handleRequest({ targetInstrument, action: "volume_up" })}
+                disabled={loading}
+              >
+                {loading ? t('sending') : t('volumeUp')}
+              </Button>
 
-            {/* Controles de Reverb */}
-            <Button
-              className="h-16 text-3xl font-bold"
-              onClick={() => handleRequest({ targetInstrument, action: "reverb_down" })}
-              disabled={loading}
-              variant="secondary"
-            >
-              {loading ? "ENVIANDO..." : "REVERB -"}
-            </Button>
-            <Button
-              className="h-16 text-3xl font-bold"
-              onClick={() => handleRequest({ targetInstrument, action: "reverb_up" })}
-              disabled={loading}
-            >
-              {loading ? "ENVIANDO..." : "REVERB +"}
-            </Button>
+              {/* Controles de Reverb */}
+              <Button
+                className="h-16 text-xl font-light"
+                onClick={() => handleRequest({ targetInstrument, action: "reverb_down" })}
+                disabled={loading}
+                variant="secondary"
+              >
+                {loading ? t('sending') : t('reverbDown')}
+              </Button>
+              <Button
+                className="h-16 text-xl font-light"
+                onClick={() => handleRequest({ targetInstrument, action: "reverb_up" })}
+                disabled={loading}
+              >
+                {loading ? t('sending') : t('reverbUp')}
+              </Button>
+            </div>
+
+            {/* Botones especiales */}
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <Button
+                className="h-16 text-lg font-light bg-green-500 hover:bg-green-600 text-white"
+                onClick={() => handleRequest({ targetInstrument: currentInstrument, action: "thanks" })}
+                disabled={loading}
+              >
+                {loading ? t('sending') : t('thanks')}
+              </Button>
+              <Button
+                className="h-16 text-lg font-light bg-red-500 hover:bg-red-600 text-white"
+                onClick={() => handleRequest({ targetInstrument: currentInstrument, action: "assistance" })}
+                disabled={loading}
+              >
+                {loading ? t('sending') : t('assistance')}
+              </Button>
+            </div>
           </div>
         )}
       </div>

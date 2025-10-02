@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { useLocation } from "wouter";
 
 interface Props {
@@ -14,13 +15,14 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
   const [loading, setLoading] = useState(false);
   const [action, setAction] = useState<'join' | 'create' | null>(null);
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
 
   const handleAction = async (actionType: 'join' | 'create') => {
     if (!roomName.trim()) {
       toast({
-        title: "Error",
-        description: "Por favor ingresa un nombre para la sala",
+        title: t('error'),
+        description: t('enterRoomName'),
         variant: "destructive",
       });
       return;
@@ -39,8 +41,8 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
         if (!response.ok) {
           if (response.status === 404) {
             toast({
-              title: "Sala no encontrada",
-              description: `No existe una sala llamada "${roomName}". ¿Quieres crearla?`,
+              title: t('roomNotFound'),
+              description: t('roomNotFoundDesc').replace('{name}', roomName),
               variant: "destructive",
             });
             return;
@@ -68,20 +70,20 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
       // Mostrar mensaje informativo
       if (actionType === 'create' && room.isExisting) {
         toast({
-          title: "Te uniste a sala existente",
-          description: `Ya existía una sala llamada "${roomName}", te conectamos a ella.`,
+          title: t('joinedExistingRoom'),
+          description: t('joinedExistingRoomDesc').replace('{name}', roomName),
           duration: 3000,
         });
       } else if (actionType === 'create' && !room.isExisting) {
         toast({
-          title: "Sala creada",
-          description: `Nueva sala "${roomName}" creada exitosamente.`,
+          title: t('roomCreated'),
+          description: t('roomCreatedDesc').replace('{name}', roomName),
           duration: 2000,
         });
       } else {
         toast({
-          title: "Conectado",
-          description: `Te uniste a la sala "${roomName}".`,
+          title: t('connected'),
+          description: t('connectedDesc').replace('{name}', roomName),
           duration: 2000,
         });
       }
@@ -90,8 +92,8 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
     } catch (error) {
       console.error('Error con la sala:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo procesar la solicitud",
+        title: t('error'),
+        description: error instanceof Error ? error.message : t('errorProcessingRequest'),
         variant: "destructive",
       });
     } finally {
@@ -104,7 +106,7 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
     <div className="space-y-4">
       <Input
         type="text"
-        placeholder="ej: Ensayos1234, ConciertoXYZ, SalaRock2024"
+        placeholder={t('roomNamePlaceholder')}
         value={roomName}
         onChange={(e) => setRoomName(e.target.value)}
         disabled={loading}
@@ -117,7 +119,7 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
           disabled={loading || !roomName.trim()}
           className="w-full"
         >
-          {loading && action === 'join' ? "Buscando..." : "Unirse a Sala"}
+          {loading && action === 'join' ? t('searching') : t('joinRoom')}
         </Button>
         
         <Button 
@@ -125,13 +127,13 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
           disabled={loading || !roomName.trim()}
           className="w-full"
         >
-          {loading && action === 'create' ? "Creando..." : "Crear Sala"}
+          {loading && action === 'create' ? t('creating') : t('createRoom')}
         </Button>
       </div>
       
-      <p className="text-sm text-gray-500 text-center">
-        <strong>Unirse:</strong> Conecta a una sala existente<br />
-        <strong>Crear:</strong> Crea nueva o usa existente si ya hay una
+      <p className="text-sm text-gray-500 text-center font-light">
+        <strong>{t('joinRoom')}:</strong> {t('joinInfo')}<br />
+        <strong>{t('createRoom')}:</strong> {t('createInfo')}
       </p>
     </div>
   );
