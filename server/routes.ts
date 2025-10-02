@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { db } from "@db";
-import { rooms, requests } from "@db/schema";
+import { rooms, requests, customInstruments } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 import { requestSchema, RequestData } from "./websocket";
 
@@ -69,6 +69,78 @@ export function registerRoutes(app: Express): Server {
       }
     } catch (error) {
       console.error("[API] Error buscando sala:", error);
+      next(error);
+    }
+  });
+
+  // Obtener instrumentos personalizados de una sala
+  app.get("/api/rooms/:roomId/instruments", async (req, res, next) => {
+    try {
+      const { roomId } = req.params;
+      const roomIdNum = parseInt(roomId, 10);
+
+      if (isNaN(roomIdNum)) {
+        res.status(400).json({ message: "ID de sala inválido" });
+        return;
+      }
+
+      const instruments = await db.query.customInstruments.findMany({
+        where: eq(customInstruments.roomId, roomIdNum)
+      });
+
+      res.json(instruments);
+    } catch (error) {
+      console.error("[API] Error obteniendo instrumentos:", error);
+      next(error);
+    }
+  });
+
+  // Crear un instrumento personalizado en una sala
+  app.post("/api/rooms/:roomId/instruments", async (req, res, next) => {
+    try {
+      const { roomId } = req.params;
+      const roomIdNum = parseInt(roomId, 10);
+
+      if (isNaN(roomIdNum)) {
+        res.status(400).json({ message: "ID de sala inválido" });
+        return;
+      }
+
+      const { name } = req.body;
+      if (!name || !name.trim()) {
+        res.status(400).json({ message: "Nombre de instrumento requerido" });
+        return;
+      }
+
+      // Verificar si ya existe un instrumento con ese nombre en esta sala
+      const existing = await db.query.customInstruments.findFirst({
+        where: and(
+          eq(customInstruments.roomId, roomIdNum),
+          eq(customInstruments.name, name.trim())
+        )
+      });
+
+      if (existing) {
+        res.json(existing); // Si ya existe, devolverlo
+        return;
+      }
+
+      // Crear nuevo instrumento
+      const [instrument] = await db.insert(customInstruments)
+        .values({ roomId: roomIdNum, name: name.trim() })
+        .returning();
+
+      // Propagar a todos los clientes de la sala via WebSocket
+      if (wss) {
+        broadcastToRoom(roomId, JSON.stringify({
+          type: 'newInstrument',
+          data: instrument
+        }));
+      }
+
+      res.json(instrument);
+    } catch (error) {
+      console.error("[API] Error creando instrumento:", error);
       next(error);
     }
   });

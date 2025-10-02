@@ -9,8 +9,21 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 export default function MusicianPanel() {
   const { roomId } = useParams();
-  const { connected, sendMessage } = useWebSocket(roomId!);
+  const { connected, sendMessage, customInstruments, setCustomInstruments } = useWebSocket(roomId!);
   const [instrument, setInstrument] = useState("");
+
+  // Cargar instrumentos personalizados al montar
+  useEffect(() => {
+    if (!roomId) return;
+    
+    fetch(`/api/rooms/${roomId}/instruments`)
+      .then(res => res.json())
+      .then(instruments => {
+        const names = instruments.map((i: any) => i.name);
+        setCustomInstruments(names);
+      })
+      .catch(err => console.error('Error cargando instrumentos:', err));
+  }, [roomId, setCustomInstruments]);
 
   const handleRequest = (request: {
     targetInstrument: string;
@@ -52,6 +65,8 @@ export default function MusicianPanel() {
             currentInstrument={instrument}
             onInstrumentSelect={setInstrument}
             onRequest={handleRequest}
+            roomId={roomId!}
+            customInstruments={customInstruments}
           />
         </CardContent>
       </Card>

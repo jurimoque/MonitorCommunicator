@@ -9,9 +9,11 @@ interface Props {
   currentInstrument: string;
   onInstrumentSelect: (instrument: string) => void;
   onRequest: (request: { targetInstrument: string; action: string }) => void;
+  roomId: string;
+  customInstruments: string[];
 }
 
-export default function RequestForm({ currentInstrument, onInstrumentSelect, onRequest }: Props) {
+export default function RequestForm({ currentInstrument, onInstrumentSelect, onRequest, roomId, customInstruments }: Props) {
   const [targetInstrument, setTargetInstrument] = useState("");
   const [loading, setLoading] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -57,15 +59,46 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
     }
   };
 
-  const handleCustomInstrumentSubmit = () => {
-    if (customInstrument.trim()) {
-      onInstrumentSelect(customInstrument.trim());
+  const handleCustomInstrumentSubmit = async () => {
+    const instrumentName = customInstrument.trim();
+    if (!instrumentName) return;
+
+    try {
+      // Guardar en la base de datos para compartir con todos los usuarios
+      const response = await fetch(`/api/rooms/${roomId}/instruments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: instrumentName })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${await response.text()}`);
+      }
+
+      // Solo actualizar si el guardado fue exitoso
+      onInstrumentSelect(instrumentName);
       setCustomInstrument("");
       setShowCustomInput(false);
+      
+      toast({
+        title: "Instrumento creado",
+        description: `${instrumentName} ahora está disponible para todos en la sala`,
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error guardando instrumento:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el instrumento personalizado. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
     }
   };
 
   if (!currentInstrument) {
+    // Combinar instrumentos predefinidos y personalizados para el select inicial
+    const allAvailableInstruments = [...INSTRUMENTS, ...customInstruments.filter(ci => !INSTRUMENTS.includes(ci as any))];
+    
     return (
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Selecciona tu instrumento</h2>
@@ -77,7 +110,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                 <SelectValue placeholder="Selecciona tu instrumento" />
               </SelectTrigger>
               <SelectContent>
-                {INSTRUMENTS.map((inst) => (
+                {allAvailableInstruments.map((inst) => (
                   <SelectItem key={inst} value={inst}>
                     {inst}
                   </SelectItem>
@@ -133,6 +166,10 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
     );
   }
 
+  // Combinar todos los instrumentos (predefinidos + personalizados)
+  const allInstruments = [...INSTRUMENTS, ...customInstruments.filter(ci => !INSTRUMENTS.includes(ci as any))];
+  const otherInstruments = allInstruments.filter(inst => inst !== currentInstrument);
+
   return (
     <div className="space-y-6">
       <div>
@@ -147,9 +184,9 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
           {/* Mostrar primero el instrumento actual */}
           <button
             onClick={() => setTargetInstrument(currentInstrument)}
-            className={`p-3 rounded-lg transition-all ${
+            className={`p-3 rounded-lg transition-all h-16 flex items-center justify-center text-center text-sm font-semibold ${
               targetInstrument === currentInstrument 
-                ? 'ring-2 ring-offset-2 ring-black scale-105' 
+                ? 'ring-2 ring-offset-2 ring-black dark:ring-white scale-105' 
                 : 'hover:scale-105'
             }`}
             style={{
@@ -157,16 +194,16 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
               color: getInstrumentColor(currentInstrument).text
             }}
           >
-            YO ({currentInstrument})
+            <span className="truncate px-1">YO ({currentInstrument})</span>
           </button>
           {/* Luego mostrar el resto de instrumentos */}
-          {INSTRUMENTS.filter(inst => inst !== currentInstrument).map((inst) => (
+          {otherInstruments.map((inst) => (
             <button
               key={inst}
               onClick={() => setTargetInstrument(inst)}
-              className={`p-3 rounded-lg transition-all ${
+              className={`p-3 rounded-lg transition-all h-16 flex items-center justify-center text-center text-sm font-semibold ${
                 targetInstrument === inst 
-                  ? 'ring-2 ring-offset-2 ring-black scale-105' 
+                  ? 'ring-2 ring-offset-2 ring-black dark:ring-white scale-105' 
                   : 'hover:scale-105'
               }`}
               style={{
@@ -174,7 +211,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                 color: getInstrumentColor(inst).text
               }}
             >
-              {inst}
+              <span className="truncate px-1">{inst}</span>
             </button>
           ))}
         </div>

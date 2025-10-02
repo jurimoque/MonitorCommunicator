@@ -18,6 +18,7 @@ export function useWebSocket(roomId: string) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
+  const [customInstruments, setCustomInstruments] = useState<string[]>([]);
 
   useEffect(() => {
     // Crear una nueva instancia de WebSocket nativo
@@ -86,6 +87,17 @@ export function useWebSocket(roomId: string) {
             setMessages([]);
             break;
           
+          case 'newInstrument':
+            if (message.data && message.data.name) {
+              setCustomInstruments(prev => {
+                if (!prev.includes(message.data.name)) {
+                  return [...prev, message.data.name];
+                }
+                return prev;
+              });
+            }
+            break;
+          
           default:
             console.log('Mensaje no reconocido:', message);
         }
@@ -123,5 +135,5 @@ export function useWebSocket(roomId: string) {
     }
   }, [socket]);
 
-  return { connected, messages, sendMessage };
+  return { connected, messages, sendMessage, customInstruments, setCustomInstruments };
 }
