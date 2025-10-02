@@ -118,7 +118,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
               <SelectContent>
                 {allAvailableInstruments.map((inst) => (
                   <SelectItem key={inst} value={inst}>
-                    {inst}
+                    {t(inst as any) || inst}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -179,7 +179,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-light mb-2">{t('yourInstrument')}: {currentInstrument}</h2>
+        <h2 className="text-lg font-light mb-2">{t('yourInstrument')}: {t(currentInstrument as any) || currentInstrument}</h2>
         <Button variant="outline" onClick={() => onInstrumentSelect("")}>
           {t('change')}
         </Button>
@@ -200,7 +200,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
               color: getInstrumentColor(currentInstrument).text
             }}
           >
-            <span className="truncate px-1">{t('me')} ({currentInstrument})</span>
+            <span className="truncate px-1">{t('me')} ({t(currentInstrument as any) || currentInstrument})</span>
           </button>
           {/* Luego mostrar el resto de instrumentos */}
           {otherInstruments.map((inst) => (
@@ -217,7 +217,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
                 color: getInstrumentColor(inst).text
               }}
             >
-              <span className="truncate px-1">{inst}</span>
+              <span className="truncate px-1">{t(inst as any) || inst}</span>
             </button>
           ))}
         </div>

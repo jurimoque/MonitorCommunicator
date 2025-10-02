@@ -16,6 +16,15 @@ export const translations = {
     join: 'Unirse',
     cancel: 'Cancelar',
     
+    // Instruments
+    'Batería': 'Batería',
+    'Bajo': 'Bajo',
+    'Guitarra': 'Guitarra',
+    'Teclados': 'Teclados',
+    'Voz Principal': 'Voz Principal',
+    'Coros': 'Coros',
+    'Percusión': 'Percusión',
+    
     // Instrument Selection
     selectInstrument: 'Selecciona tu instrumento',
     createCustomInstrument: '+ Crear instrumento personalizado',
@@ -68,7 +77,7 @@ export const translations = {
     errorCompletingRequest: 'No se pudo completar la petición',
     
     // Join Room Form
-    roomNamePlaceholder: 'ej: Ensayos1234, ConciertoXYZ, SalaRock2024',
+    roomNamePlaceholder: 'código de sala',
     searching: 'Buscando...',
     creating: 'Creando...',
     roomNotFound: 'Sala no encontrada',
@@ -98,6 +107,15 @@ export const translations = {
     create: 'Create',
     join: 'Join',
     cancel: 'Cancel',
+    
+    // Instruments
+    'Batería': 'Drums',
+    'Bajo': 'Bass',
+    'Guitarra': 'Guitar',
+    'Teclados': 'Keyboards',
+    'Voz Principal': 'Lead Vocals',
+    'Coros': 'Backing Vocals',
+    'Percusión': 'Percussion',
     
     // Instrument Selection
     selectInstrument: 'Select your instrument',
@@ -151,7 +169,7 @@ export const translations = {
     errorCompletingRequest: 'Could not complete the request',
     
     // Join Room Form
-    roomNamePlaceholder: 'e.g. Rehearsal1234, ConcertXYZ, RockRoom2024',
+    roomNamePlaceholder: 'venue code',
     searching: 'Searching...',
     creating: 'Creating...',
     roomNotFound: 'Room not found',

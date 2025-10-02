@@ -73,7 +73,7 @@ export default function RequestQueue({ requests, roomId }: Props) {
                   className="text-2xl font-bold uppercase" 
                   style={{ color: INSTRUMENT_COLORS[request.musician]?.text }}
                 >
-                  {request.musician}
+                  {t(request.musician as any) || request.musician}
                 </p>
                 {request.action === 'thanks' ? (
                   <p className="text-xl font-light" style={{ color: '#22c55e' }}>
@@ -86,7 +86,7 @@ export default function RequestQueue({ requests, roomId }: Props) {
                 ) : (
                   <p className="text-xl font-semibold uppercase">
                     <span style={{ color: INSTRUMENT_COLORS[request.targetInstrument]?.text }}>
-                      {request.targetInstrument}
+                      {t(request.targetInstrument as any) || request.targetInstrument}
                     </span>{' '}
                     <span style={{ color: request.action.includes('up') ? '#ff0000' : '#00ff00' }}>
                       {request.action.includes('up') ? '+' : '-'}
