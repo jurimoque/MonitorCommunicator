@@ -6,15 +6,8 @@ import { registerRoutes } from "./routes";
 
 const app = express();
 
-// Configuración de CORS
-const allowedOrigins = [
-  'https://monitor-communicator.vercel.app', // Frontend en Vercel
-  'capacitor://localhost',                   // Origen de Capacitor
-  'http://localhost'                         // Origen de Capacitor en Android
-];
-
-// Usar la configuración estándar de CORS con la lista de orígenes permitidos
-app.use(cors({ origin: allowedOrigins }));
+// Usar una configuración de CORS completamente abierta para diagnóstico
+app.use(cors());
 
 // Configuración básica de Express
 app.use(express.json());
