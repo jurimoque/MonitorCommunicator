@@ -2,18 +2,40 @@
 
 Este proyecto es una aplicación de control de monitores de escenario en tiempo real que permite a los músicos comunicarse con los técnicos de sonido.
 
-## Desarrollo Web
+## Arquitectura de Producción
+
+Este proyecto está desplegado en una arquitectura moderna en la nube:
+
+-   **Frontend:** Alojado en [Vercel](https://vercel.com).
+    -   **URL:** [https://monitor-communicator.vercel.app/](https://monitor-communicator.vercel.app/)
+-   **Backend (Servidor Web):** Alojado como un Web Service en [Render](https://render.com).
+    -   **URL:** [https://monitorcommunicator.onrender.com](https://monitorcommunicator.onrender.com)
+-   **Base de Datos:** PostgreSQL gestionado por [Render](https://render.com).
+
+El frontend se conecta automáticamente al backend desplegado.
+
+---
+
+## Desarrollo Local
 
 1.  **Instalar dependencias:**
     ```sh
     npm install
     ```
 
-2.  **Ejecutar el servidor de desarrollo:**
+2.  **Configurar variables de entorno:**
+    Crea un archivo `.env` en la raíz del proyecto y añade la URL de tu base de datos (puede ser una local o la de Render para desarrollo).
+    ```
+    DATABASE_URL=tu_url_de_postgresql
+    ```
+
+3.  **Ejecutar el servidor de desarrollo:**
     (Esto iniciará tanto el frontend de Vite como el backend de Express)
     ```sh
     npm run dev
     ```
+
+---
 
 ## Empaquetado para Móvil (Android/iOS)
 
@@ -45,10 +67,9 @@ Este proyecto utiliza Capacitor para empaquetar la aplicación web como una apli
         ```sh
         npx cap open android
         ```
-        Este comando abrirá el proyecto en Android Studio. Desde allí, puedes ejecutar la aplicación en un emulador o en un dispositivo físico, y generar un `.apk` o `.aab` para su publicación.
+        (Asegúrate de abrir la carpeta `android` directamente en Android Studio si el comando no funciona).
 
     *   **Para iOS (solo en macOS):**
         ```sh
         npx cap open ios
         ```
-        Este comando abrirá el proyecto en Xcode. Desde allí, puedes ejecutar la aplicación en el simulador de iOS o en un iPhone.
