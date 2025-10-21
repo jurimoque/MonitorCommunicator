@@ -1,9 +1,30 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import cors from "cors";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerRoutes } from "./routes";
 
 const app = express();
+
+// Configuración de CORS
+const allowedOrigins = [
+  'https://monitor-communicator.vercel.app', // Frontend en Vercel
+  'capacitor://localhost',                   // Origen de Capacitor
+  'http://localhost'                         // Origen de Capacitor en Android
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Permitir peticiones sin origen (como las de Postman o apps móviles) y las de la whitelist
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+};
+
+app.use(cors(corsOptions));
 
 // Configuración básica de Express
 app.use(express.json());
