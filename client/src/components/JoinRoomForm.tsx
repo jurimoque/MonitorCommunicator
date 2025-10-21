@@ -4,6 +4,17 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { useLocation } from "wouter";
+import { Capacitor } from '@capacitor/core';
+
+// Helper to determine the base URL
+const getBaseUrl = () => {
+  if (Capacitor.isNativePlatform()) {
+    return 'https://monitorcommunicator.onrender.com';
+  }
+  return ''; // Use relative paths for web
+};
+
+const API_BASE_URL = getBaseUrl();
 
 interface Props {
   onJoin: (roomId: string) => void;
@@ -36,7 +47,7 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
       
       if (actionType === 'join') {
         // Intentar unirse a sala existente
-        response = await fetch(`/api/rooms/search?name=${encodeURIComponent(roomName)}`);
+        response = await fetch(`${API_BASE_URL}/api/rooms/search?name=${encodeURIComponent(roomName)}`);
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -51,7 +62,7 @@ export default function JoinRoomForm({ onJoin, role }: Props) {
         }
       } else {
         // Crear nueva sala o buscar existente
-        response = await fetch('/api/rooms/find-or-create', {
+        response = await fetch(`${API_BASE_URL}/api/rooms/find-or-create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
