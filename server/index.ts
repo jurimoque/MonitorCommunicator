@@ -13,18 +13,8 @@ const allowedOrigins = [
   'http://localhost'                         // Origen de Capacitor en Android
 ];
 
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    // Permitir peticiones sin origen (como las de Postman o apps móviles) y las de la whitelist
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-};
-
-app.use(cors(corsOptions));
+// Usar la configuración estándar de CORS con la lista de orígenes permitidos
+app.use(cors({ origin: allowedOrigins }));
 
 // Configuración básica de Express
 app.use(express.json());
