@@ -19,7 +19,6 @@ interface Props {
 }
 
 export default function RequestQueue({ requests, roomId }: Props) {
-  const [completedIds, setCompletedIds] = useState<number[]>([]);
   const { toast } = useToast();
   const { t } = useLanguage();
 
@@ -33,7 +32,6 @@ export default function RequestQueue({ requests, roomId }: Props) {
         throw new Error('Error al completar la petición');
       }
 
-      // Ya no necesitamos rastrear IDs localmente porque el WebSocket actualizará el estado
       toast({
         title: t('requestCompleted'),
         description: t('requestCompletedDesc')
@@ -48,12 +46,8 @@ export default function RequestQueue({ requests, roomId }: Props) {
     }
   };
 
-  // Ahora solo filtramos las peticiones completadas según la propiedad completed
-  // El WebSocket ya filtra las completadas, pero por seguridad lo hacemos aquí también
-  const activeRequests = requests.filter(r => !r.completed);
-  
-  // Invertir el orden para mostrar las más recientes arriba
-  const sortedRequests = [...activeRequests].reverse();
+  // Derivar el estado directamente de las props en cada render
+  const sortedRequests = [...requests].reverse();
 
   return (
     <div className="space-y-4">
