@@ -18,7 +18,7 @@ interface WebSocketMessage {
 export function useWebSocket(roomId: string) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]); // Renamed from 'messages'
   const [customInstruments, setCustomInstruments] = useState<string[]>([]);
 
   useEffect(() => {
@@ -27,14 +27,11 @@ export function useWebSocket(roomId: string) {
 
     if (isNative) {
       if (import.meta.env.DEV) {
-        // Desarrollo nativo (emulador)
         wsUrl = `ws://10.0.2.2:5000/ws?roomId=${roomId}`;
       } else {
-        // Producción nativa
         wsUrl = `wss://monitorcommunicator.onrender.com/ws?roomId=${roomId}`;
       }
     } else {
-      // Lógica web existente
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       let host = window.location.host;
       if (import.meta.env.DEV) {
@@ -46,7 +43,6 @@ export function useWebSocket(roomId: string) {
     console.log('Conectando WebSocket a:', wsUrl);
     const newSocket = new WebSocket(wsUrl);
 
-    // Manejadores de eventos
     newSocket.onopen = () => {
       console.log('Conectado al servidor de WebSocket');
       setConnected(true);
@@ -55,14 +51,6 @@ export function useWebSocket(roomId: string) {
     newSocket.onclose = (event) => {
       console.log(`Desconectado del servidor de WebSocket: ${event.code} ${event.reason}`);
       setConnected(false);
-      
-      // Reconexión automática después de 3 segundos si no fue un cierre normal o por ir a otra página
-      if (event.code !== 1000 && event.code !== 1001) {
-        setTimeout(() => {
-          console.log('Intentando reconectar...');
-          // La reconexión se hará al montar de nuevo el componente
-        }, 3000);
-      }
     };
 
     newSocket.onerror = (error) => {
@@ -78,24 +66,24 @@ export function useWebSocket(roomId: string) {
         switch (message.type) {
           case 'initialRequests':
             if (Array.isArray(message.data)) {
-              setMessages(message.data.filter(req => !req.completed));
+              setRequests(message.data.filter(req => !req.completed));
             }
             break;
           
           case 'newRequest':
             if (message.data) {
-              setMessages(prev => [...prev, message.data]);
+              setRequests(prev => [...prev, message.data]);
             }
             break;
           
           case 'requestCompleted':
-            if (message.data) {
-              setMessages(prev => prev.filter(req => req.id !== message.data.id));
+            if (message.data && message.data.id) {
+              setRequests(prev => prev.filter(req => req.id !== message.data.id));
             }
             break;
           
           case 'allRequestsCompleted':
-            setMessages([]);
+            setRequests([]);
             break;
           
           case 'newInstrument':
@@ -119,10 +107,8 @@ export function useWebSocket(roomId: string) {
 
     setSocket(newSocket);
 
-    // Cleanup al desmontar
     return () => {
       console.log('Limpiando conexión WebSocket');
-      // Cerramos normalmente, código 1000
       newSocket.close(1000, 'Navegación a otra página');
     };
   }, [roomId]);
@@ -146,5 +132,5 @@ export function useWebSocket(roomId: string) {
     }
   }, [socket]);
 
-  return { connected, messages, sendMessage, customInstruments, setCustomInstruments };
+  return { connected, requests, sendMessage, customInstruments, setCustomInstruments };
 }

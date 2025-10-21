@@ -21,17 +21,9 @@ interface Request {
 
 export default function TechnicianPanel() {
   const { roomId } = useParams();
-  const { connected, messages } = useWebSocket(roomId!);
-  const [requests, setRequests] = useState<Request[]>([]);
+  const { connected, requests } = useWebSocket(roomId!);
   const { toast } = useToast();
   const { t } = useLanguage();
-
-  useEffect(() => {
-    if (Array.isArray(messages)) {
-      const currentRequests = messages.filter(msg => !msg.completed);
-      setRequests(currentRequests);
-    }
-  }, [messages]);
 
   const clearAllRequests = async () => {
     try {
