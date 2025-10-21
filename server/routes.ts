@@ -195,7 +195,7 @@ export function registerRoutes(app: Express): Server {
       if (wss) {
         broadcastToRoom(roomId, JSON.stringify({
           type: 'allRequestsCompleted',
-          roomId: roomId
+          roomId: roomId 
         }));
       }
       
