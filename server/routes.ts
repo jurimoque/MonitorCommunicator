@@ -239,12 +239,16 @@ export function registerRoutes(app: Express): Server {
   // Broadcast to all clients in a room
   function broadcastToRoom(roomId: string, message: string) {
     const roomSet = roomClients.get(roomId);
+    console.log(`[Broadcast] Attempting to broadcast to room: ${roomId}`);
     if (roomSet) {
+      console.log(`[Broadcast] Found ${roomSet.size} client(s) in room ${roomId}.`);
       roomSet.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(message);
         }
       });
+    } else {
+      console.log(`[Broadcast] No clients found for room ${roomId}.`);
     }
   }
   
