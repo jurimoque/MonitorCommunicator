@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Production Domain (HTTPS only) -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">monitorcommunicator.onrender.com</domain>
     </domain-config>
+    <!-- Localhost for Capacitor WebView (HTTP allowed) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain>localhost</domain>
+    </domain-config>
+    <!-- Default policy for all other domains -->
     <base-config cleartextTrafficPermitted="false" />
 </network-security-config>
