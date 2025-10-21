@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 interface SocketRequest {
   musician: string;
@@ -21,17 +22,22 @@ export function useWebSocket(roomId: string) {
   const [customInstruments, setCustomInstruments] = useState<string[]>([]);
 
   useEffect(() => {
-    // Crear una nueva instancia de WebSocket nativo
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    
-    // En desarrollo, usar el puerto correcto del servidor
-    let host = window.location.host;
-    if (import.meta.env.DEV) {
-      // En desarrollo, forzar el puerto 5000 donde está el servidor
-      host = window.location.hostname + ':5000';
+    const isNative = Capacitor.isNativePlatform();
+    let wsUrl = '';
+
+    if (isNative) {
+      // En nativo, siempre apuntar a la URL de producción
+      wsUrl = `wss://monitorcommunicator.onrender.com/ws?roomId=${roomId}`;
+    } else {
+      // Lógica existente para la web
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      let host = window.location.host;
+      if (import.meta.env.DEV) {
+        host = window.location.hostname + ':5000';
+      }
+      wsUrl = `${protocol}//${host}/ws?roomId=${roomId}`;
     }
     
-    const wsUrl = `${protocol}//${host}/ws?roomId=${roomId}`;
     console.log('Conectando WebSocket a:', wsUrl);
     const newSocket = new WebSocket(wsUrl);
 
