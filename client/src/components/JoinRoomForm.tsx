@@ -9,9 +9,15 @@ import { Capacitor } from '@capacitor/core';
 // Helper to determine the base URL
 const getBaseUrl = () => {
   if (Capacitor.isNativePlatform()) {
+    // If in native development, point to the host machine via the emulator's special IP
+    if (import.meta.env.DEV) {
+      return 'http://10.0.2.2:5000';
+    }
+    // For native production builds, point to the live server
     return 'https://monitorcommunicator.onrender.com';
   }
-  return ''; // Use relative paths for web
+  // For web, use relative paths
+  return '';
 };
 
 const API_BASE_URL = getBaseUrl();

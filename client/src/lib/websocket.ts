@@ -26,10 +26,15 @@ export function useWebSocket(roomId: string) {
     let wsUrl = '';
 
     if (isNative) {
-      // En nativo, siempre apuntar a la URL de producción
-      wsUrl = `wss://monitorcommunicator.onrender.com/ws?roomId=${roomId}`;
+      if (import.meta.env.DEV) {
+        // Desarrollo nativo (emulador)
+        wsUrl = `ws://10.0.2.2:5000/ws?roomId=${roomId}`;
+      } else {
+        // Producción nativa
+        wsUrl = `wss://monitorcommunicator.onrender.com/ws?roomId=${roomId}`;
+      }
     } else {
-      // Lógica existente para la web
+      // Lógica web existente
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       let host = window.location.host;
       if (import.meta.env.DEV) {
