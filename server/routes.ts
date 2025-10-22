@@ -145,67 +145,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/rooms/:roomId/requests/:requestId/complete", async (req, res, next) => {
-    try {
-      const { roomId, requestId } = req.params;
-      const requestIdNum = parseInt(requestId, 10);
-
-      if (isNaN(requestIdNum)) {
-        res.status(400).json({ message: "ID de petición inválido" });
-        return;
-      }
-
-      const [updatedRequest] = await db.update(requests)
-        .set({ completed: true })
-        .where(eq(requests.id, requestIdNum))
-        .returning();
-      
-      // Send WebSocket notification to all clients in the room
-      if (wss && updatedRequest) {
-        broadcastToRoom(roomId, JSON.stringify({
-          type: 'requestCompleted',
-          data: updatedRequest
-        }));
-      }
-      
-      res.json({ message: "Petición completada" });
-    } catch (error) {
-      console.error("[API] Error completando petición:", error);
-      next(error);
-    }
-  });
-
-  // Add a clear all requests endpoint
-  app.post("/api/rooms/:roomId/requests/clear", async (req, res, next) => {
-    try {
-      const { roomId } = req.params;
-      const roomIdNum = parseInt(roomId, 10);
-
-      if (isNaN(roomIdNum)) {
-        res.status(400).json({ message: "ID de sala inválido" });
-        return;
-      }
-
-      const updatedRequests = await db.update(requests)
-        .set({ completed: true })
-        .where(eq(requests.roomId, roomIdNum))
-        .returning();
-      
-      // Send WebSocket notification to all clients in the room
-      if (wss) {
-        broadcastToRoom(roomId, JSON.stringify({
-          type: 'allRequestsCompleted',
-          roomId: roomId 
-        }));
-      }
-      
-      res.json({ message: "Todas las peticiones completadas", count: updatedRequests ? updatedRequests.length : 0 });
-    } catch (error) {
-      console.error("[API] Error limpiando peticiones:", error);
-      next(error);
-    }
-  });
-
   const server = createServer(app);
 
   // Manejar errores del servidor HTTP
@@ -333,6 +272,35 @@ export function registerRoutes(app: Express): Server {
             broadcastToRoom(roomId, JSON.stringify({
               type: 'newRequest',
               data: newRequest
+            }));
+          } else if (data.type === 'completeRequest') {
+            const { requestId } = data.data;
+            const requestIdNum = parseInt(requestId, 10);
+
+            if (isNaN(requestIdNum)) return;
+
+            const [updatedRequest] = await db.update(requests)
+              .set({ completed: true })
+              .where(eq(requests.id, requestIdNum))
+              .returning();
+            
+            if (updatedRequest) {
+              broadcastToRoom(roomId, JSON.stringify({
+                type: 'requestCompleted',
+                data: updatedRequest
+              }));
+            }
+          } else if (data.type === 'clearAllRequests') {
+            const roomIdNum = parseInt(roomId, 10);
+            if(isNaN(roomIdNum)) return;
+
+            await db.update(requests)
+              .set({ completed: true })
+              .where(eq(requests.roomId, roomIdNum));
+            
+            broadcastToRoom(roomId, JSON.stringify({
+              type: 'allRequestsCompleted',
+              roomId: roomId
             }));
           }
         } catch (error) {

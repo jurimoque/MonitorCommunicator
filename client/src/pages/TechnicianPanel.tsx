@@ -22,20 +22,16 @@ interface Request {
 export default function TechnicianPanel() {
   const { roomId } = useParams();
   const { toast } = useToast();
-  const { connected, requests } = useWebSocket({ roomId: roomId!, toast });
+  const { connected, requests, sendMessage } = useWebSocket({ roomId: roomId!, toast });
   const { t } = useLanguage();
 
-  const clearAllRequests = async () => {
+  const clearAllRequests = () => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}/requests/clear`, {
-        method: 'POST'
+      sendMessage({
+        type: 'clearAllRequests',
+        data: { roomId: roomId }
       });
 
-      if (!response.ok) {
-        throw new Error('Error al limpiar la cola');
-      }
-
-      // El WebSocket actualizará el estado automáticamente
       toast({
         title: t('queueCleared'),
         description: t('queueClearedDesc'),
@@ -78,7 +74,7 @@ export default function TechnicianPanel() {
           )}
         </CardHeader>
         <CardContent>
-          <RequestQueue requests={requests} roomId={roomId!} />
+          <RequestQueue requests={requests} roomId={roomId!} sendMessage={sendMessage} />
         </CardContent>
       </Card>
     </div>

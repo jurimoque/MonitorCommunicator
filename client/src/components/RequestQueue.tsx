@@ -16,21 +16,22 @@ interface Request {
 interface Props {
   requests: Request[];
   roomId: string;
+  sendMessage: (message: any) => void; // Add sendMessage to props
 }
 
-export default function RequestQueue({ requests, roomId }: Props) {
+export default function RequestQueue({ requests, roomId, sendMessage }: Props) {
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  const handleComplete = async (requestId: number) => {
+  const handleComplete = (requestId: number) => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}/requests/${requestId}/complete`, {
-        method: 'POST'
+      sendMessage({
+        type: 'completeRequest',
+        data: {
+          roomId: roomId,
+          requestId: requestId,
+        }
       });
-
-      if (!response.ok) {
-        throw new Error('Error al completar la petición');
-      }
 
       toast({
         title: t('requestCompleted'),
