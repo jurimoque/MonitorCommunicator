@@ -1,53 +1,30 @@
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { INSTRUMENT_COLORS } from "@/lib/constants";
 
-import { useWebSocketContext } from "@/lib/WebSocketProvider";
-
 interface Request {
   id: number;
   musician: string;
   targetInstrument: string;
   action: string;
-  completed: boolean;
 }
 
 interface Props {
   requests: Request[];
+  sendMessage: (message: any) => void;
 }
 
-export default function RequestQueue({ requests }: Props) {
-  const { sendMessage } = useWebSocketContext();
+export default function RequestQueue({ requests, sendMessage }: Props) {
   const { toast } = useToast();
   const { t } = useLanguage();
 
   const handleComplete = (requestId: number) => {
-    try {
-      sendMessage({
-        type: 'completeRequest',
-        data: {
-          requestId: requestId,
-        }
-      });
-
-      toast({
-        title: t('requestCompleted'),
-        description: t('requestCompletedDesc')
-      });
-    } catch (error) {
-      console.error('Error completando petición:', error);
-      toast({
-        title: t('error'),
-        description: t('errorCompletingRequest'),
-        variant: "destructive"
-      });
-    }
+    sendMessage({ type: 'completeRequest', data: { requestId } });
+    toast({ title: t('requestCompleted') });
   };
 
-  // Derivar el estado directamente de las props en cada render
   const sortedRequests = [...requests].reverse();
 
   return (
