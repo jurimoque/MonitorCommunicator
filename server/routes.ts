@@ -260,6 +260,7 @@ export function registerRoutes(app: Express): Server {
       
       // Handle messages from client
       ws.on('message', async (message) => {
+        console.log('[WebSocket] Raw message received:', message.toString()); // RAW LOG
         try {
           const parsedMessage = JSON.parse(message.toString());
           const { type, data } = parsedMessage;
