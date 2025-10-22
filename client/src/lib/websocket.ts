@@ -82,14 +82,12 @@ export function useWebSocket({ roomId, toast }: UseWebSocketOptions) {
             break;
           
           case 'requestCompleted':
-            toast({ title: 'DEBUG: "requestCompleted" received' });
             if (message.data && message.data.id) {
               setRequests(prev => prev.filter(req => req.id !== message.data.id));
             }
             break;
           
           case 'allRequestsCompleted':
-            toast({ title: 'DEBUG: "allRequestsCompleted" received' });
             setRequests([]);
             break;
           
