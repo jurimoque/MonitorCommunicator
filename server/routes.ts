@@ -264,7 +264,6 @@ export function registerRoutes(app: Express): Server {
           const data = JSON.parse(message.toString());
           
           if (data.type === 'request') {
-            // Validar datos de la petición
             const validatedData = requestSchema.parse(data.data);
             const roomIdNum = parseInt(validatedData.roomId, 10);
             
@@ -278,11 +277,11 @@ export function registerRoutes(app: Express): Server {
               })
               .returning();
             
-            // Broadcast to all clients in the room
             broadcastToRoom(roomId, JSON.stringify({
               type: 'newRequest',
               data: newRequest
             }));
+
           } else if (data.type === 'completeRequest') {
             const { requestId } = data.data;
             const requestIdNum = parseInt(requestId, 10);
