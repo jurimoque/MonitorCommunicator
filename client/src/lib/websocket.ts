@@ -12,7 +12,7 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
 
   const connect = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
-      return;
+      socketRef.current.close(); // Close existing connection before creating a new one
     }
 
     const isNative = Capacitor.isNativePlatform();
@@ -51,7 +51,6 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
             setRequests(prev => [...prev, message.data]);
             break;
           case 'requestCompleted':
-            // Notify the musician if it's their request
             if (message.data?.musician === currentUserInstrument) {
               toast({ title: "Petición completada", description: "El técnico ha completado tu petición." });
             }

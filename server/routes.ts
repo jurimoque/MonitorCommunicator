@@ -145,6 +145,32 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get room details by ID
+  app.get("/api/rooms/:roomId", async (req, res, next) => {
+    try {
+      const { roomId } = req.params;
+      const roomIdNum = parseInt(roomId, 10);
+
+      if (isNaN(roomIdNum)) {
+        res.status(400).json({ message: "ID de sala inválido" });
+        return;
+      }
+
+      const room = await db.query.rooms.findFirst({
+        where: eq(rooms.id, roomIdNum)
+      });
+
+      if (room) {
+        res.json(room);
+      } else {
+        res.status(404).json({ message: "Sala no encontrada" });
+      }
+    } catch (error) {
+      console.error("[API] Error obteniendo detalles de la sala:", error);
+      next(error);
+    }
+  });
+
   const server = createServer(app);
 
   // Manejar errores del servidor HTTP

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RequestForm from "@/components/RequestForm";
 import { useWebSocket } from "@/lib/websocket";
 import { useLanguage } from "@/hooks/use-language";
@@ -16,6 +16,18 @@ export default function MusicianPanel() {
   const { connected, sendMessage, customInstruments, connect } = useWebSocket(roomId!, instrument);
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
+  const [roomName, setRoomName] = useState("");
+
+  useEffect(() => {
+    if (!roomId) return;
+    // Fetch room name on mount
+    fetch(`/api/rooms/${roomId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.name) setRoomName(data.name);
+      })
+      .catch(err => console.error('Error fetching room name:', err));
+  }, [roomId]);
 
   const handleRequest = (request: { targetInstrument: string; action: string; }) => {
     if (!connected || !roomId) return false;
@@ -47,8 +59,11 @@ export default function MusicianPanel() {
         <ThemeToggle />
       </div>
       <Card>
+        <CardHeader>
+          <CardTitle className="font-light text-center">{t('room')}: {roomName}</CardTitle>
+        </CardHeader>
         {!connected && (
-          <CardHeader className="pb-0">
+          <CardHeader className="pt-0 pb-0">
             <Alert variant="destructive" className="max-w-full">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>{t('noConnection')}</AlertTitle>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -16,6 +17,18 @@ export default function TechnicianPanel() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
+  const [roomName, setRoomName] = useState("");
+
+  useEffect(() => {
+    if (!roomId) return;
+    // Fetch room name on mount
+    fetch(`/api/rooms/${roomId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.name) setRoomName(data.name);
+      })
+      .catch(err => console.error('Error fetching room name:', err));
+  }, [roomId]);
 
   const clearAllRequests = () => {
     sendMessage({ type: 'clearAllRequests', data: { roomId } });
@@ -38,18 +51,23 @@ export default function TechnicianPanel() {
       </div>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="font-light">{t('requestQueue')}</CardTitle>
+          <div>
+            <CardTitle className="font-light">{t('requestQueue')}</CardTitle>
+            <p className="text-sm text-gray-500">{t('room')}: {roomName}</p>
+          </div>
           <Button variant="outline" onClick={clearAllRequests}>
             {t('clearQueue')}
           </Button>
-          {!connected && (
+        </CardHeader>
+        {!connected && (
+          <CardHeader className="pt-0 pb-0">
             <Alert variant="destructive" className="max-w-full">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>{t('noConnection')}</AlertTitle>
               <AlertDescription className="text-sm">{t('reconnecting')}</AlertDescription>
             </Alert>
-          )}
-        </CardHeader>
+          </CardHeader>
+        )}
         <CardContent>
           <RequestQueue requests={requests} sendMessage={sendMessage} />
         </CardContent>
