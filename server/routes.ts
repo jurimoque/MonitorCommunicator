@@ -181,9 +181,19 @@ export function registerRoutes(app: Express): Server {
     console.log(`[Broadcast] Attempting to broadcast to room: ${roomId}`);
     if (roomSet) {
       console.log(`[Broadcast] Found ${roomSet.size} client(s) in room ${roomId}.`);
+      let clientIndex = 0;
       roomSet.forEach((client) => {
+        clientIndex++;
+        console.log(`[Broadcast] -> Client ${clientIndex}: readyState is ${client.readyState}.`);
         if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
+          try {
+            console.log(`[Broadcast] -> Client ${clientIndex}: Sending message: ${message}`);
+            client.send(message);
+          } catch (e) {
+            console.error(`[Broadcast] -> Client ${clientIndex}: FAILED to send message. Error:`, e);
+          }
+        } else {
+          console.log(`[Broadcast] -> Client ${clientIndex}: SKIPPED (not open).`);
         }
       });
     } else {
