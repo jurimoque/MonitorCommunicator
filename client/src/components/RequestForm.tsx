@@ -5,6 +5,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { INSTRUMENTS, getInstrumentColor } from "@/lib/constants";
+import { Capacitor } from '@capacitor/core';
+
+// Helper to determine the base URL
+const getBaseUrl = () => {
+  if (Capacitor.isNativePlatform()) {
+    if (import.meta.env.DEV) {
+      return 'http://10.0.2.2:5000';
+    }
+    return 'https://monitorcommunicator.onrender.com';
+  }
+  return ''; // Use relative paths for web
+};
+
+const API_BASE_URL = getBaseUrl();
 
 interface Props {
   currentInstrument: string;
@@ -71,7 +85,7 @@ export default function RequestForm({ currentInstrument, onInstrumentSelect, onR
 
     try {
       // Guardar en la base de datos para compartir con todos los usuarios
-      const response = await fetch(`/api/rooms/${roomId}/instruments`, {
+      const response = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/instruments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: instrumentName })
