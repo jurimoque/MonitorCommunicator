@@ -12,7 +12,7 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
 
   const connect = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
-      socketRef.current.close(); // Close existing connection before creating a new one
+      socketRef.current.close();
     }
 
     const isNative = Capacitor.isNativePlatform();
@@ -40,7 +40,12 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
     newSocket.onclose = () => setConnected(false);
     newSocket.onerror = (error) => console.error('Error de WebSocket:', error);
 
-    newSocket.onmessage = (event) => {
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    socketRef.current.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
         switch (message.type) {
@@ -74,7 +79,8 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
         console.error('Error procesando mensaje:', error);
       }
     };
-  }, [roomId, currentUserInstrument, toast, customInstruments]);
+  }, [currentUserInstrument, toast, customInstruments]);
+
 
   useEffect(() => {
     connect();
