@@ -118,21 +118,18 @@ export function useWebSocket({ roomId, toast }: UseWebSocketOptions) {
     };
   }, [roomId]);
 
-  const sendMessage = useCallback((message: SocketRequest) => {
+  const sendMessage = useCallback((message: object) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       console.error('No se puede enviar el mensaje: socket no está listo');
       return false;
     }
 
     try {
-      console.log('Enviando petición:', message);
-      socket.send(JSON.stringify({
-        type: 'request',
-        data: message
-      }));
+      console.log('Enviando mensaje:', message);
+      socket.send(JSON.stringify(message));
       return true;
     } catch (error) {
-      console.error('Error enviando petición:', error);
+      console.error('Error enviando mensaje:', error);
       return false;
     }
   }, [socket]);

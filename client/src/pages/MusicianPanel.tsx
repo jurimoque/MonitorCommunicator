@@ -35,11 +35,14 @@ export default function MusicianPanel() {
     if (!connected || !roomId) return false;
 
     sendMessage({
-      roomId,
-      musician: instrument,
-      instrument: instrument,
-      targetInstrument: request.targetInstrument,
-      action: request.action,
+      type: 'request',
+      data: {
+        roomId,
+        musician: instrument,
+        instrument: instrument,
+        targetInstrument: request.targetInstrument,
+        action: request.action,
+      }
     });
 
     return true;
