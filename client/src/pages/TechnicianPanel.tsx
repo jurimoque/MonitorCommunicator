@@ -43,6 +43,12 @@ export default function TechnicianPanel() {
           >
             {t('clearQueue')}
           </Button>
+          <Button 
+            variant="destructive"
+            onClick={() => sendMessage({ type: 'clearAllRequests' })}
+          >
+            DEBUG: CLEAR
+          </Button>
           {!connected && (
             <Alert variant="destructive" className="max-w-full">
               <AlertCircle className="h-4 w-4" />
