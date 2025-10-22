@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import RequestForm from "@/components/RequestForm";
 import { useLanguage } from "@/hooks/use-language";
@@ -9,6 +10,7 @@ import LanguageToggle from "@/components/LanguageToggle";
 import { useWebSocketContext } from "@/lib/WebSocketProvider";
 
 export default function MusicianPanel() {
+  const { roomId } = useParams();
   const { connected, sendMessage, customInstruments } = useWebSocketContext();
   const [instrument, setInstrument] = useState("");
   const { t } = useLanguage();
@@ -22,6 +24,7 @@ export default function MusicianPanel() {
     sendMessage({
       type: 'request',
       data: {
+        roomId,
         musician: instrument,
         instrument: instrument,
         targetInstrument: request.targetInstrument,
