@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { INSTRUMENT_COLORS } from "@/lib/constants";
 
+import { useWebSocketContext } from "@/lib/WebSocketProvider";
+
 interface Request {
   id: number;
   musician: string;
@@ -15,11 +17,10 @@ interface Request {
 
 interface Props {
   requests: Request[];
-  roomId: string;
-  sendMessage: (message: any) => void; // Add sendMessage to props
 }
 
-export default function RequestQueue({ requests, roomId, sendMessage }: Props) {
+export default function RequestQueue({ requests }: Props) {
+  const { sendMessage } = useWebSocketContext();
   const { toast } = useToast();
   const { t } = useLanguage();
 
@@ -28,7 +29,6 @@ export default function RequestQueue({ requests, roomId, sendMessage }: Props) {
       sendMessage({
         type: 'completeRequest',
         data: {
-          roomId: roomId,
           requestId: requestId,
         }
       });

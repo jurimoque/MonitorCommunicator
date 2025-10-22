@@ -1,35 +1,15 @@
 import { useState, useEffect } from "react";
-import { useParams } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
-import RequestQueue from "@/components/RequestQueue";
-import { useWebSocket } from "@/lib/websocket";
-import { useToast } from "@/hooks/use-toast";
-import { useLanguage } from "@/hooks/use-language";
-import ThemeToggle from "@/components/ThemeToggle";
-import LanguageToggle from "@/components/LanguageToggle";
-
-interface Request {
-  id: number;
-  musician: string;
-  targetInstrument: string;
-  action: string;
-  completed: boolean;
-}
+import { useWebSocketContext } from "@/lib/WebSocketProvider";
 
 export default function TechnicianPanel() {
-  const { roomId } = useParams();
+  const { connected, requests, sendMessage } = useWebSocketContext();
   const { toast } = useToast();
-  const { connected, requests, sendMessage } = useWebSocket({ roomId: roomId!, toast });
   const { t } = useLanguage();
 
   const clearAllRequests = () => {
     try {
       sendMessage({
-        type: 'clearAllRequests',
-        data: { roomId: roomId }
+        type: 'clearAllRequests'
       });
 
       toast({
@@ -74,7 +54,7 @@ export default function TechnicianPanel() {
           )}
         </CardHeader>
         <CardContent>
-          <RequestQueue requests={requests} roomId={roomId!} sendMessage={sendMessage} />
+          <RequestQueue requests={requests} />
         </CardContent>
       </Card>
     </div>

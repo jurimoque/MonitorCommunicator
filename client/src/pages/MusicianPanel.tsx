@@ -1,43 +1,27 @@
-import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import RequestForm from "@/components/RequestForm";
-import { useWebSocket } from "@/lib/websocket";
 import { useLanguage } from "@/hooks/use-language";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageToggle from "@/components/LanguageToggle";
+import { useWebSocketContext } from "@/lib/WebSocketProvider";
 
 export default function MusicianPanel() {
-  const { roomId } = useParams();
-  const { connected, sendMessage, customInstruments, setCustomInstruments } = useWebSocket(roomId!);
+  const { connected, sendMessage, customInstruments } = useWebSocketContext();
   const [instrument, setInstrument] = useState("");
   const { t } = useLanguage();
-
-  // Cargar instrumentos personalizados al montar
-  useEffect(() => {
-    if (!roomId) return;
-    
-    fetch(`/api/rooms/${roomId}/instruments`)
-      .then(res => res.json())
-      .then(instruments => {
-        const names = instruments.map((i: any) => i.name);
-        setCustomInstruments(names);
-      })
-      .catch(err => console.error('Error cargando instrumentos:', err));
-  }, [roomId, setCustomInstruments]);
 
   const handleRequest = (request: {
     targetInstrument: string;
     action: string;
   }) => {
-    if (!connected || !roomId) return false;
+    if (!connected) return false;
 
     sendMessage({
       type: 'request',
       data: {
-        roomId,
         musician: instrument,
         instrument: instrument,
         targetInstrument: request.targetInstrument,
@@ -72,7 +56,6 @@ export default function MusicianPanel() {
             currentInstrument={instrument}
             onInstrumentSelect={setInstrument}
             onRequest={handleRequest}
-            roomId={roomId!}
             customInstruments={customInstruments}
           />
         </CardContent>
