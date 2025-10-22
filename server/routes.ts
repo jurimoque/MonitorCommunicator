@@ -261,56 +261,67 @@ export function registerRoutes(app: Express): Server {
       // Handle messages from client
       ws.on('message', async (message) => {
         try {
-          const data = JSON.parse(message.toString());
-          
-          if (data.type === 'request') {
-            const validatedData = requestSchema.parse(data.data);
-            const roomIdNum = parseInt(validatedData.roomId, 10);
-            
-            const [newRequest] = await db.insert(requests)
-              .values({
-                roomId: roomIdNum,
-                musician: validatedData.musician,
-                instrument: validatedData.instrument,
-                targetInstrument: validatedData.targetInstrument,
-                action: validatedData.action,
-              })
-              .returning();
-            
-            broadcastToRoom(roomId, JSON.stringify({
-              type: 'newRequest',
-              data: newRequest
-            }));
+          const parsedMessage = JSON.parse(message.toString());
+          const { type, data } = parsedMessage;
 
-          } else if (data.type === 'completeRequest') {
-            const { requestId } = data.data;
-            const requestIdNum = parseInt(requestId, 10);
-
-            if (isNaN(requestIdNum)) return;
-
-            const [updatedRequest] = await db.update(requests)
-              .set({ completed: true })
-              .where(eq(requests.id, requestIdNum))
-              .returning();
-            
-            if (updatedRequest) {
+          switch (type) {
+            case 'request': {
+              const validatedData = requestSchema.parse(data);
+              const roomIdNum = parseInt(validatedData.roomId, 10);
+              
+              const [newRequest] = await db.insert(requests)
+                .values({
+                  roomId: roomIdNum,
+                  musician: validatedData.musician,
+                  instrument: validatedData.instrument,
+                  targetInstrument: validatedData.targetInstrument,
+                  action: validatedData.action,
+                })
+                .returning();
+              
               broadcastToRoom(roomId, JSON.stringify({
-                type: 'requestCompleted',
-                data: updatedRequest
+                type: 'newRequest',
+                data: newRequest
               }));
+              break;
             }
-          } else if (data.type === 'clearAllRequests') {
-            const roomIdNum = parseInt(roomId, 10);
-            if(isNaN(roomIdNum)) return;
 
-            await db.update(requests)
-              .set({ completed: true })
-              .where(eq(requests.roomId, roomIdNum));
-            
-            broadcastToRoom(roomId, JSON.stringify({
-              type: 'allRequestsCompleted',
-              roomId: roomId
-            }));
+            case 'completeRequest': {
+              const { requestId } = data;
+              const requestIdNum = parseInt(requestId, 10);
+              if (isNaN(requestIdNum)) return;
+
+              const [updatedRequest] = await db.update(requests)
+                .set({ completed: true })
+                .where(eq(requests.id, requestIdNum))
+                .returning();
+              
+              if (updatedRequest) {
+                broadcastToRoom(roomId, JSON.stringify({
+                  type: 'requestCompleted',
+                  data: updatedRequest
+                }));
+              }
+              break;
+            }
+
+            case 'clearAllRequests': {
+              const roomIdNum = parseInt(roomId, 10);
+              if(isNaN(roomIdNum)) return;
+
+              await db.update(requests)
+                .set({ completed: true })
+                .where(eq(requests.roomId, roomIdNum));
+              
+              broadcastToRoom(roomId, JSON.stringify({
+                type: 'allRequestsCompleted',
+                roomId: roomId
+              }));
+              break;
+            }
+
+            default:
+              console.log(`[WebSocket] Received unknown message type: ${type}`);
           }
         } catch (error) {
           console.error('[WebSocket] Error procesando mensaje:', error);
