@@ -251,12 +251,22 @@ export function registerRoutes(app: Express): Server {
       // Filter only non-completed requests
       const activeRequests = pendingRequests.filter(req => !req.completed);
       
-      console.log(`[WebSocket] Enviando ${activeRequests.length} peticiones activas de ${pendingRequests.length} totales`);
-      
       ws.send(JSON.stringify({
         type: 'initialRequests',
         data: activeRequests
       }));
+
+      // Send initial custom instruments
+      const existingInstruments = await db.query.customInstruments.findMany({
+        where: eq(customInstruments.roomId, roomIdNum)
+      });
+
+      if (existingInstruments.length > 0) {
+        ws.send(JSON.stringify({
+          type: 'initialInstruments',
+          data: existingInstruments
+        }));
+      }
       
       // Handle messages from client
       ws.on('message', async (message) => {

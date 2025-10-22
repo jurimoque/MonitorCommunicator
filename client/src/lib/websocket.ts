@@ -1,16 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { useToast } from '@/hooks/use-toast';
 
-export function useWebSocket(roomId: string) {
+export function useWebSocket(roomId: string, currentUserInstrument: string) {
   const [connected, setConnected] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
   const [customInstruments, setCustomInstruments] = useState<string[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
+  const { toast } = useToast();
 
   const connect = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
-      return; // Already connected or connecting
+      return;
     }
 
     const isNative = Capacitor.isNativePlatform();
@@ -49,10 +51,19 @@ export function useWebSocket(roomId: string) {
             setRequests(prev => [...prev, message.data]);
             break;
           case 'requestCompleted':
+            // Notify the musician if it's their request
+            if (message.data?.musician === currentUserInstrument) {
+              toast({ title: "Petición completada", description: "El técnico ha completado tu petición." });
+            }
             setRequests(prev => prev.filter(req => req.id !== message.data.id));
             break;
           case 'allRequestsCompleted':
             setRequests([]);
+            break;
+          case 'initialInstruments':
+            if (Array.isArray(message.data)) {
+              setCustomInstruments(message.data.map(i => i.name));
+            }
             break;
           case 'newInstrument':
             if (message.data?.name && !customInstruments.includes(message.data.name)) {
@@ -64,7 +75,7 @@ export function useWebSocket(roomId: string) {
         console.error('Error procesando mensaje:', error);
       }
     };
-  }, [roomId, customInstruments]);
+  }, [roomId, currentUserInstrument, toast, customInstruments]);
 
   useEffect(() => {
     connect();
@@ -72,7 +83,6 @@ export function useWebSocket(roomId: string) {
     const listener = App.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
         if (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) {
-          console.log('App is active, reconnecting WebSocket...');
           connect();
         }
       }
@@ -87,10 +97,8 @@ export function useWebSocket(roomId: string) {
   const sendMessage = useCallback((message: object) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify(message));
-    } else {
-      console.error('Cannot send message, socket is not open.');
     }
   }, []);
 
-  return { connected, requests, customInstruments, sendMessage, setCustomInstruments };
+  return { connected, requests, customInstruments, sendMessage, setCustomInstruments, connect };
 }

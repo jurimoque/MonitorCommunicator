@@ -1,8 +1,8 @@
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
 import RequestQueue from "@/components/RequestQueue";
 import { useWebSocket } from "@/lib/websocket";
 import { useToast } from "@/hooks/use-toast";
@@ -12,9 +12,10 @@ import LanguageToggle from "@/components/LanguageToggle";
 
 export default function TechnicianPanel() {
   const { roomId } = useParams();
-  const { connected, requests, sendMessage } = useWebSocket(roomId!);
+  const { connected, requests, sendMessage, connect } = useWebSocket(roomId!, ""); // Technician has no instrument
   const { toast } = useToast();
   const { t } = useLanguage();
+  const [, setLocation] = useLocation();
 
   const clearAllRequests = () => {
     sendMessage({ type: 'clearAllRequests', data: { roomId } });
@@ -23,8 +24,15 @@ export default function TechnicianPanel() {
 
   return (
     <div className="min-h-screen p-4 pt-24 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900 dark:to-blue-900">
-      {/* Controles en la esquina superior derecha */}
-      <div className="fixed top-12 right-4 z-10 flex gap-2">
+      <div className="fixed top-4 left-4 z-10 flex gap-2">
+        <Button variant="outline" size="icon" onClick={() => setLocation('/')}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" onClick={connect}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="fixed top-4 right-4 z-10 flex gap-2">
         <LanguageToggle />
         <ThemeToggle />
       </div>
