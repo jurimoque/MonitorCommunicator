@@ -21,8 +21,8 @@ interface Request {
 
 export default function TechnicianPanel() {
   const { roomId } = useParams();
-  const { connected, requests } = useWebSocket(roomId!);
   const { toast } = useToast();
+  const { connected, requests } = useWebSocket({ roomId: roomId!, toast });
   const { t } = useLanguage();
 
   const clearAllRequests = async () => {

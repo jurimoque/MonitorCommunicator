@@ -15,7 +15,12 @@ interface WebSocketMessage {
   roomId?: string;
 }
 
-export function useWebSocket(roomId: string) {
+interface UseWebSocketOptions {
+  roomId: string;
+  toast: (options: any) => void;
+}
+
+export function useWebSocket({ roomId, toast }: UseWebSocketOptions) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [requests, setRequests] = useState<any[]>([]); // Renamed from 'messages'
@@ -77,12 +82,14 @@ export function useWebSocket(roomId: string) {
             break;
           
           case 'requestCompleted':
+            toast({ title: 'DEBUG: "requestCompleted" received' });
             if (message.data && message.data.id) {
               setRequests(prev => prev.filter(req => req.id !== message.data.id));
             }
             break;
           
           case 'allRequestsCompleted':
+            toast({ title: 'DEBUG: "allRequestsCompleted" received' });
             setRequests([]);
             break;
           
