@@ -27,7 +27,7 @@ export default function TechnicianPanel() {
         <LanguageToggle />
         <ThemeToggle />
       </div>
-      <Card>
+      <Card className="mt-16">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="font-light">{t('requestQueue')}</CardTitle>
           <Button variant="outline" onClick={clearAllRequests}>
