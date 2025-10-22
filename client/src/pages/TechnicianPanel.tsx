@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useParams } from "wouter";
 import { useWebSocketContext } from "@/lib/WebSocketProvider";
 
 export default function TechnicianPanel() {
+  const { roomId } = useParams();
   const { connected, requests, sendMessage } = useWebSocketContext();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -9,7 +11,8 @@ export default function TechnicianPanel() {
   const clearAllRequests = () => {
     try {
       sendMessage({
-        type: 'clearAllRequests'
+        type: 'clearAllRequests',
+        data: { roomId } // Add roomId here
       });
 
       toast({
