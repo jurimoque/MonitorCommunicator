@@ -51,7 +51,7 @@ export default function MusicianPanel() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <Button variant="outline" size="icon" onClick={connect}>
-          <RefreshCw className="h-4 w-4" />
+          RECONECTAR AHORA
         </Button>
       </div>
       <div className="fixed top-4 right-4 z-10 flex gap-2">
