@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 export function useWebSocket(roomId: string) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -7,7 +8,12 @@ export function useWebSocket(roomId: string) {
   const [requests, setRequests] = useState<any[]>([]);
   const [customInstruments, setCustomInstruments] = useState<string[]>([]);
 
-  useEffect(() => {
+  const connect = useCallback(() => {
+    // Close any existing socket before creating a new one
+    if (socket && socket.readyState !== WebSocket.CLOSED) {
+      socket.close();
+    }
+
     const isNative = Capacitor.isNativePlatform();
     let wsUrl = '';
 
@@ -60,11 +66,25 @@ export function useWebSocket(roomId: string) {
     };
 
     setSocket(newSocket);
+  }, [roomId, socket]);
+
+  useEffect(() => {
+    // Initial connection
+    connect();
+
+    // Listen for app state changes to reconnect when app comes to foreground
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive && (!socket || socket.readyState === WebSocket.CLOSED)) {
+        console.log('App is active, reconnecting WebSocket...');
+        connect();
+      }
+    });
 
     return () => {
-      newSocket.close();
+      socket?.close();
+      listener.remove();
     };
-  }, [roomId]);
+  }, [roomId, connect, socket]);
 
   const sendMessage = useCallback((message: object) => {
     if (socket?.readyState === WebSocket.OPEN) {

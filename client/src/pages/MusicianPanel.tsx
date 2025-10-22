@@ -43,7 +43,8 @@ export default function MusicianPanel() {
   };
 
   return (
-    <div className="min-h-screen p-4 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900 dark:to-blue-900">
+    <div className="min-h-screen p-4 pt-24 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900 dark:to-blue-900">
+      {/* Controles en la esquina superior derecha */}
       <div className="fixed top-12 right-4 z-10 flex gap-2">
         <LanguageToggle />
         <ThemeToggle />
