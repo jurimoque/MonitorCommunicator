@@ -36,7 +36,7 @@ export default function TechnicianPanel() {
       </div>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="font-light">{t('requestQueue')}</CardTitle>
+          <CardTitle className="font-light">COLA DE PETICIONES</CardTitle>
           <Button 
             variant="outline"
             onClick={clearAllRequests}
