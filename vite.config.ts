@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "dist/public", // Output to a subfolder to avoid conflicts
+    outDir: "dist/public",
     rollupOptions: {
       input: path.resolve(__dirname, "client", "index.html"),
     },
