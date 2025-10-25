@@ -14,7 +14,7 @@ import { Capacitor } from "@capacitor/core";
 export default function MusicianPanel() {
   const { roomId } = useParams();
   const [instrument, setInstrument] = useState("");
-  const { connected, sendMessage, customInstruments, connect, setCustomInstruments } = useWebSocket(roomId!, instrument);
+  const { connected, sendMessage, customInstruments, connect } = useWebSocket(roomId!, instrument);
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [roomName, setRoomName] = useState("");

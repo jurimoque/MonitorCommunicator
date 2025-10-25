@@ -1,13 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { useToast } from '@/hooks/use-toast';
 
-export function useWebSocket(roomId: string) {
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+export function useWebSocket(roomId: string, currentUserInstrument: string) {
   const [connected, setConnected] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
   const [customInstruments, setCustomInstruments] = useState<string[]>([]);
+  const socketRef = useRef<WebSocket | null>(null);
+  const { toast } = useToast();
 
-  useEffect(() => {
+  const connect = useCallback(() => {
+    if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
+      socketRef.current.close();
+    }
+
     const isNative = Capacitor.isNativePlatform();
     let wsUrl = '';
 
@@ -27,10 +34,11 @@ export function useWebSocket(roomId: string) {
     }
     
     const newSocket = new WebSocket(wsUrl);
+    socketRef.current = newSocket;
 
     newSocket.onopen = () => setConnected(true);
     newSocket.onclose = () => setConnected(false);
-    newSocket.onerror = (error) => console.error('Error de WebSocket:', error);
+    newSocket.onerror = (error) => console.error('WebSocket Error:', error);
 
     newSocket.onmessage = (event) => {
       try {
@@ -43,48 +51,49 @@ export function useWebSocket(roomId: string) {
             setRequests(prev => [...prev, message.data]);
             break;
           case 'requestCompleted':
+            if (message.data?.musician === currentUserInstrument) {
+              toast({ title: "Petición completada", description: "El técnico ha completado tu petición." });
+            }
             setRequests(prev => prev.filter(req => req.id !== message.data.id));
             break;
           case 'allRequestsCompleted':
             setRequests([]);
             break;
           case 'initialInstruments':
-            console.log('[WS Client] Received initialInstruments:', message.data);
             if (Array.isArray(message.data)) {
-              const newInstruments = message.data.map(i => i.name);
-              console.log('[WS Client] Setting instruments to:', newInstruments);
-              setCustomInstruments(newInstruments);
+              setCustomInstruments(prev => [...new Set([...prev, ...message.data.map(i => i.name)])]);
             }
             break;
           case 'newInstrument':
-            console.log('[WS Client] Received newInstrument:', message.data);
             if (message.data?.name) {
-              setCustomInstruments(prev => {
-                console.log('[WS Client] Previous instruments:', prev);
-                const newState = [...new Set([...prev, message.data.name])];
-                console.log('[WS Client] New instruments state:', newState);
-                return newState;
-              });
+              setCustomInstruments(prev => [...new Set([...prev, message.data.name])]);
             }
             break;
         }
       } catch (error) {
-        console.error('Error procesando mensaje:', error);
+        console.error('Error processing message:', error);
       }
     };
+  }, [roomId, currentUserInstrument, toast]);
 
-    setSocket(newSocket);
-
+  useEffect(() => {
+    connect();
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive && (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED)) {
+        connect();
+      }
+    });
     return () => {
-      newSocket.close();
+      listener.remove();
+      socketRef.current?.close();
     };
-  }, [roomId]);
+  }, [connect]);
 
   const sendMessage = useCallback((message: object) => {
-    if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(message));
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(message));
     }
-  }, [socket]);
+  }, []);
 
-  return { connected, requests, customInstruments, sendMessage, setCustomInstruments };
+  return { connected, requests, customInstruments, sendMessage, setCustomInstruments, connect };
 }

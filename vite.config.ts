@@ -13,8 +13,8 @@ export default defineConfig({
     },
   },
   build: {
-    // Build all assets directly into the 'dist' folder.
-    outDir: "dist",
+    // Build client assets into a 'public' subfolder inside the main 'dist' directory.
+    outDir: "dist/public",
     rollupOptions: {
       // The entry point for the client is the index.html inside the 'client' folder.
       input: path.resolve(__dirname, "client", "index.html"),
