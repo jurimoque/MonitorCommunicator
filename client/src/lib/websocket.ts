@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
+import { App, PluginListenerHandle } from '@capacitor/app';
 import { useToast } from '@/hooks/use-toast';
 
 export function useWebSocket(roomId: string, currentUserInstrument: string) {
@@ -9,6 +9,14 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
   const [customInstruments, setCustomInstruments] = useState<string[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
   const { toast } = useToast();
+  const isMounted = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const connect = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
@@ -36,11 +44,16 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
     const newSocket = new WebSocket(wsUrl);
     socketRef.current = newSocket;
 
-    newSocket.onopen = () => setConnected(true);
-    newSocket.onclose = () => setConnected(false);
+    newSocket.onopen = () => {
+      if (isMounted.current) setConnected(true);
+    };
+    newSocket.onclose = () => {
+      if (isMounted.current) setConnected(false);
+    };
     newSocket.onerror = (error) => console.error('WebSocket Error:', error);
 
     newSocket.onmessage = (event) => {
+      if (!isMounted.current) return;
       try {
         const message = JSON.parse(event.data);
         switch (message.type) {
@@ -61,12 +74,15 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
             break;
           case 'initialInstruments':
             if (Array.isArray(message.data)) {
-              setCustomInstruments(prev => [...new Set([...prev, ...message.data.map(i => i.name)])]);
+              const instrumentNames = message.data.map(i => i.name);
+              setCustomInstruments(prev => [...new Set([...prev, ...instrumentNames])]);
             }
             break;
           case 'newInstrument':
             if (message.data?.name) {
-              setCustomInstruments(prev => [...new Set([...prev, message.data.name])]);
+              setCustomInstruments(prev => 
+                prev.includes(message.data.name) ? prev : [...new Set([...prev, message.data.name])]
+              );
             }
             break;
         }
@@ -78,13 +94,16 @@ export function useWebSocket(roomId: string, currentUserInstrument: string) {
 
   useEffect(() => {
     connect();
-    const listener = App.addListener('appStateChange', ({ isActive }) => {
+    let listener: PluginListenerHandle;
+
+    App.addListener('appStateChange', ({ isActive }) => {
       if (isActive && (!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED)) {
         connect();
       }
-    });
+    }).then(l => listener = l);
+
     return () => {
-      listener.remove();
+      listener?.remove();
       socketRef.current?.close();
     };
   }, [connect]);
