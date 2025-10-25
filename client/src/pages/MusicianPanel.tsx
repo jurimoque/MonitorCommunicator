@@ -15,18 +15,6 @@ export default function MusicianPanel() {
   const [instrument, setInstrument] = useState("");
   const { t } = useLanguage();
 
-  useEffect(() => {
-    if (!roomId) return;
-    // This fetch needs to be adapted for native if used
-    fetch(`/api/rooms/${roomId}/instruments`)
-      .then(res => res.json())
-      .then(instruments => {
-        const names = instruments.map((i: any) => i.name);
-        setCustomInstruments(names);
-      })
-      .catch(err => console.error('Error cargando instrumentos:', err));
-  }, [roomId, setCustomInstruments]);
-
   const handleRequest = (request: { targetInstrument: string; action: string; }) => {
     if (!connected || !roomId) return false;
     sendMessage({

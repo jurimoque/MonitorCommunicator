@@ -48,8 +48,13 @@ export function useWebSocket(roomId: string) {
           case 'allRequestsCompleted':
             setRequests([]);
             break;
+          case 'initialInstruments':
+            if (Array.isArray(message.data)) {
+              setCustomInstruments(message.data.map(i => i.name));
+            }
+            break;
           case 'newInstrument':
-            if (message.data?.name) {
+            if (message.data?.name && !customInstruments.includes(message.data.name)) {
               setCustomInstruments(prev => [...prev, message.data.name]);
             }
             break;

@@ -244,19 +244,22 @@ export function registerRoutes(app: Express): Server {
       roomClients.get(roomId)?.add(ws);
       
       // Send initial data
-      const pendingRequests = await db.query.requests.findMany({
-        where: eq(requests.roomId, roomIdNum)
-      });
-      
-      // Filter only non-completed requests
-      const activeRequests = pendingRequests.filter(req => !req.completed);
-      
-      console.log(`[WebSocket] Enviando ${activeRequests.length} peticiones activas de ${pendingRequests.length} totales`);
+      const [pendingRequests, existingInstruments] = await Promise.all([
+        db.query.requests.findMany({ where: and(eq(requests.roomId, roomIdNum), eq(requests.completed, false)) }),
+        db.query.customInstruments.findMany({ where: eq(customInstruments.roomId, roomIdNum) })
+      ]);
       
       ws.send(JSON.stringify({
         type: 'initialRequests',
-        data: activeRequests
+        data: pendingRequests
       }));
+
+      if (existingInstruments.length > 0) {
+        ws.send(JSON.stringify({
+          type: 'initialInstruments',
+          data: existingInstruments
+        }));
+      }
       
       // Handle messages from client
       ws.on('message', async (message) => {
