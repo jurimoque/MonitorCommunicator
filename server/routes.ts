@@ -6,7 +6,7 @@ import { rooms, requests, customInstruments } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 import { requestSchema, RequestData } from "./websocket";
 
-export function registerRoutes(app: Express): Server {
+export async function registerRoutes(app: Express): Promise<Server> {
   // API Routes
   // Buscar o crear sala
   app.post("/api/rooms/find-or-create", async (req, res, next) => {
