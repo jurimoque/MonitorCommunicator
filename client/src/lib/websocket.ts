@@ -49,13 +49,22 @@ export function useWebSocket(roomId: string) {
             setRequests([]);
             break;
           case 'initialInstruments':
+            console.log('[WS Client] Received initialInstruments:', message.data);
             if (Array.isArray(message.data)) {
-              setCustomInstruments(message.data.map(i => i.name));
+              const newInstruments = message.data.map(i => i.name);
+              console.log('[WS Client] Setting instruments to:', newInstruments);
+              setCustomInstruments(newInstruments);
             }
             break;
           case 'newInstrument':
-            if (message.data?.name && !customInstruments.includes(message.data.name)) {
-              setCustomInstruments(prev => [...prev, message.data.name]);
+            console.log('[WS Client] Received newInstrument:', message.data);
+            if (message.data?.name) {
+              setCustomInstruments(prev => {
+                console.log('[WS Client] Previous instruments:', prev);
+                const newState = [...new Set([...prev, message.data.name])];
+                console.log('[WS Client] New instruments state:', newState);
+                return newState;
+              });
             }
             break;
         }

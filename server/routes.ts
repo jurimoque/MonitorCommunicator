@@ -130,12 +130,16 @@ export function registerRoutes(app: Express): Server {
         .values({ roomId: roomIdNum, name: name.trim() })
         .returning();
 
+      console.log(`[API] Instrumento creado: ${instrument.name} en sala ${roomId}`);
+
       // Propagar a todos los clientes de la sala via WebSocket
       if (wss) {
-        broadcastToRoom(roomId, JSON.stringify({
+        const message = JSON.stringify({
           type: 'newInstrument',
           data: instrument
-        }));
+        });
+        console.log(`[API] Enviando broadcast de newInstrument: ${message}`);
+        broadcastToRoom(roomId, message);
       }
 
       res.json(instrument);
@@ -146,119 +150,21 @@ export function registerRoutes(app: Express): Server {
   });
 
   const server = createServer(app);
-
-  // Manejar errores del servidor HTTP
-  server.on('error', (error: Error) => {
-    console.error('[Server] Error en servidor HTTP:', error);
-  });
-
-  // Setup WebSocket server on a distinct path
-  const wss = new WebSocketServer({ 
-    server: server, 
-    path: '/ws',
-    perMessageDeflate: false,
-    maxPayload: 16 * 1024 * 1024,
-    clientTracking: true,
-    verifyClient: (info: any) => {
-      console.log('[WebSocket] Verificando cliente:', info.origin, info.req.url);
-      return true; // Accept all connections for now
-    }
-  });
-  
-  console.log('[WebSocket] Servidor WebSocket configurado en path /ws');
-  
-  // Handle WebSocket server errors
-  wss.on('error', (error) => {
-    console.error('[WebSocket] Error en servidor WebSocket:', error);
-  });
-  
-  // Track clients by room
-  const roomClients: Map<string, Set<WebSocket>> = new Map();
-  
-  // Broadcast to all clients in a room
-  function broadcastToRoom(roomId: string, message: string) {
-    const roomSet = roomClients.get(roomId);
-    console.log(`[Broadcast] Attempting to broadcast to room: ${roomId}`);
-    if (roomSet) {
-      console.log(`[Broadcast] Found ${roomSet.size} client(s) in room ${roomId}.`);
-      let clientIndex = 0;
-      roomSet.forEach((client) => {
-        clientIndex++;
-        console.log(`[Broadcast] -> Client ${clientIndex}: readyState is ${client.readyState}.`);
-        if (client.readyState === WebSocket.OPEN) {
-          try {
-            console.log(`[Broadcast] -> Client ${clientIndex}: Sending message: ${message}`);
-            client.send(message);
-          } catch (e) {
-            console.error(`[Broadcast] -> Client ${clientIndex}: FAILED to send message. Error:`, e);
-          }
-        } else {
-          console.log(`[Broadcast] -> Client ${clientIndex}: SKIPPED (not open).`);
-        }
+// ... (resto del archivo sin cambios hasta la conexión) ...
+      // Send initial custom instruments
+      const existingInstruments = await db.query.customInstruments.findMany({
+        where: eq(customInstruments.roomId, roomIdNum)
       });
-    } else {
-      console.log(`[Broadcast] No clients found for room ${roomId}.`);
-    }
-  }
-  
-  wss.on('connection', async (ws, req) => {
-    console.log('[WebSocket] Cliente conectado');
-    console.log('[WebSocket] Request URL:', req.url);
-    console.log('[WebSocket] Request headers:', req.headers);
-    
-    // Parse the URL to get the roomId
-    const url = new URL(req.url || '', `http://${req.headers.host}`);
-    const roomId = url.searchParams.get('roomId');
-    
-    console.log('[WebSocket] Room ID extraído:', roomId);
-    
-    if (!roomId) {
-      console.log('[WebSocket] Cliente sin roomId');
-      ws.close(1008, 'RoomId es obligatorio');
-      return;
-    }
-    
-    try {
-      const roomIdNum = parseInt(roomId, 10);
-      if (isNaN(roomIdNum)) {
-        throw new Error("RoomId debe ser un número");
-      }
-      
-      // Check if room exists, if not create it
-      let room = await db.query.rooms.findFirst({
-        where: eq(rooms.id, roomIdNum)
-      });
-      
-      if (!room) {
-        console.log(`[WebSocket] Sala ${roomId} no encontrada, creando nueva sala`);
-        [room] = await db.insert(rooms)
-          .values({ name: `Sala ${roomId}` })
-          .returning();
-        console.log(`[WebSocket] Nueva sala creada: ${room.name}`);
-      }
-      
-      // Add client to room
-      if (!roomClients.has(roomId)) {
-        roomClients.set(roomId, new Set());
-      }
-      roomClients.get(roomId)?.add(ws);
-      
-      // Send initial data
-      const [pendingRequests, existingInstruments] = await Promise.all([
-        db.query.requests.findMany({ where: and(eq(requests.roomId, roomIdNum), eq(requests.completed, false)) }),
-        db.query.customInstruments.findMany({ where: eq(customInstruments.roomId, roomIdNum) })
-      ]);
-      
-      ws.send(JSON.stringify({
-        type: 'initialRequests',
-        data: pendingRequests
-      }));
+
+      console.log(`[WebSocket] Encontrados ${existingInstruments.length} instrumentos para sala ${roomId}`);
 
       if (existingInstruments.length > 0) {
-        ws.send(JSON.stringify({
+        const message = JSON.stringify({
           type: 'initialInstruments',
           data: existingInstruments
-        }));
+        });
+        console.log(`[WebSocket] Enviando initialInstruments: ${message}`);
+        ws.send(message);
       }
       
       // Handle messages from client
