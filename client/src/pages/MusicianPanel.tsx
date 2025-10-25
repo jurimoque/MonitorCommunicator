@@ -1,26 +1,48 @@
 import { useState, useEffect } from "react";
-import { useParams } from "wouter";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useParams, useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RequestForm from "@/components/RequestForm";
 import { useWebSocket } from "@/lib/websocket";
 import { useLanguage } from "@/hooks/use-language";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageToggle from "@/components/LanguageToggle";
+import { Capacitor } from "@capacitor/core";
 
 export default function MusicianPanel() {
   const { roomId } = useParams();
-  const { connected, sendMessage, customInstruments, setCustomInstruments } = useWebSocket(roomId!);
   const [instrument, setInstrument] = useState("");
+  const { connected, sendMessage, customInstruments, connect, setCustomInstruments } = useWebSocket(roomId!, instrument);
   const { t } = useLanguage();
+  const [, setLocation] = useLocation();
+  const [roomName, setRoomName] = useState("");
+
+  const getBaseUrl = () => {
+    if (Capacitor.isNativePlatform()) {
+      if (import.meta.env.DEV) { return 'http://10.0.2.2:5000'; }
+      return 'https://monitorcommunicator.onrender.com';
+    }
+    return '';
+  };
+
+  useEffect(() => {
+    if (!roomId) return;
+    fetch(`${getBaseUrl()}/api/rooms/${roomId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.name) setRoomName(data.name);
+      })
+      .catch(err => console.error('Error fetching room name:', err));
+  }, [roomId]);
 
   const handleRequest = (request: { targetInstrument: string; action: string; }) => {
     if (!connected || !roomId) return false;
     sendMessage({
       type: 'request',
       data: {
-        roomId, // THIS IS THE FIX
+        roomId,
         musician: instrument,
         instrument: instrument,
         targetInstrument: request.targetInstrument,
@@ -31,14 +53,25 @@ export default function MusicianPanel() {
   };
 
   return (
-    <div className="min-h-screen p-4 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900 dark:to-blue-900">
-      <div className="fixed top-12 right-4 z-10 flex gap-2">
+    <div className="min-h-screen p-4 pt-24 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900 dark:to-blue-900">
+      <div className="fixed top-4 left-4 z-10 flex gap-2">
+        <Button variant="outline" size="icon" onClick={() => setLocation('/')}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" onClick={connect}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="fixed top-4 right-4 z-10 flex gap-2">
         <LanguageToggle />
         <ThemeToggle />
       </div>
       <Card>
+        <CardHeader>
+          <CardTitle className="font-light text-center">{t('room')}: {roomName}</CardTitle>
+        </CardHeader>
         {!connected && (
-          <CardHeader className="pb-0">
+          <CardHeader className="pt-0 pb-0">
             <Alert variant="destructive" className="max-w-full">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>{t('noConnection')}</AlertTitle>

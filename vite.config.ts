@@ -7,6 +7,8 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// This is the original, stable configuration that correctly builds the project.
 export default defineConfig({
   plugins: [react(), runtimeErrorOverlay(), themePlugin()],
   resolve: {
@@ -15,9 +17,12 @@ export default defineConfig({
       "@": path.resolve(__dirname, "client", "src"),
     },
   },
+  // The root of the client project is the 'client' folder.
   root: path.resolve(__dirname, "client"),
   build: {
-    outDir: path.resolve(__dirname, "dist"),
+    // The output directory is '../dist', relative to the 'root'.
+    // This places the 'dist' folder at the project's top level.
+    outDir: path.resolve(__dirname, "..", "dist"),
     emptyOutDir: true,
   },
 });
