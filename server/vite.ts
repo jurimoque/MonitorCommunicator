@@ -4,7 +4,6 @@ import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,12 +18,12 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// This function is for development and not critical for production.
 export async function setupVite(app: Express, server: Server) {
   const vite = await createViteServer({
-    ...viteConfig,
-    configFile: false,
     server: { middlewareMode: true, hmr: { server } },
     appType: "custom",
+    root: path.resolve(__dirname, "..", "client"),
   });
   app.use(vite.middlewares);
 }

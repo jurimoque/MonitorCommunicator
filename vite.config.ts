@@ -1,28 +1,26 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
-import path, { dirname } from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { fileURLToPath } from "url";
+import path from "path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// This is the original, stable configuration that correctly builds the project.
+// This is the definitive, standard Vite configuration for this project structure.
 export default defineConfig({
-  plugins: [react(), runtimeErrorOverlay(), themePlugin()],
+  plugins: [react()],
+  // The project root is the actual root, NOT the 'client' folder.
   resolve: {
     alias: {
-      "@db": path.resolve(__dirname, "db"),
+      // Alias to find components, lib, etc. inside client/src
       "@": path.resolve(__dirname, "client", "src"),
     },
   },
-  // The root of the client project is the 'client' folder.
-  root: path.resolve(__dirname, "client"),
   build: {
-    // The output directory is '../dist', relative to the 'root'.
-    // This places the 'dist' folder at the project's top level.
-    outDir: path.resolve(__dirname, "..", "dist"),
+    // Build all assets directly into the 'dist' folder.
+    outDir: "dist",
+    rollupOptions: {
+      // The entry point for the client is the index.html inside the 'client' folder.
+      input: path.resolve(__dirname, "client", "index.html"),
+    },
     emptyOutDir: true,
   },
+  // The public assets directory is also inside the 'client' folder.
+  publicDir: path.resolve(__dirname, "client", "public"),
 });
