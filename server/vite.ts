@@ -76,18 +76,18 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname);
+  // The server's compiled index.js is in 'dist'. The client assets are also in 'dist'.
+  const publicPath = path.resolve(__dirname);
 
-  if (!fs.existsSync(distPath)) {
+  if (!fs.existsSync(path.resolve(publicPath, "index.html"))) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find the build directory: ${publicPath}. Run 'npm run build'.`
     );
   }
 
-  app.use(express.static(distPath));
-
-  // fall through to index.html if the file doesn't exist
+  app.use(express.static(publicPath));
+  // Fallback to index.html for single-page applications.
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(publicPath, "index.html"));
   });
 }

@@ -7,17 +7,26 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
 export default defineConfig({
   plugins: [react(), runtimeErrorOverlay(), themePlugin()],
+  // CRITICAL: Use relative paths for all assets in the final build.
+  base: "./",
   resolve: {
     alias: {
       "@db": path.resolve(__dirname, "db"),
       "@": path.resolve(__dirname, "client", "src"),
     },
   },
-  root: path.resolve(__dirname, "client"),
+  // CRITICAL: Define the source root, which is essential for this project structure.
+  root: "client",
   build: {
-    outDir: path.resolve(__dirname, "..", "dist"),
+    // CRITICAL: Output to the project's root 'dist' folder, relative to the 'root' property.
+    outDir: "../dist",
     emptyOutDir: true,
+    rollupOptions: {
+      // CRITICAL: Prevent bundling of Capacitor's native bridge modules.
+      external: [/^@capacitor\/.*/],
+    },
   },
 });
