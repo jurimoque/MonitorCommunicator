@@ -24,9 +24,10 @@ export default defineConfig({
     // CRITICAL: Output to the project's root 'dist' folder, relative to the 'root' property.
     outDir: "../dist",
     emptyOutDir: true,
-    rollupOptions: {
-      // CRITICAL: Prevent bundling of Capacitor's native bridge modules.
-      external: [/^@capacitor\/.*/],
-    },
+    // CAPACITOR FIX: Los módulos @capacitor/* DEBEN ser bundleados por Vite.
+    // El archivo capacitor.js en el HTML es solo el bridge nativo, pero los módulos
+    // TypeScript (@capacitor/core, @capacitor/app, etc.) son librerías JavaScript
+    // normales que necesitan estar en el bundle final.
+    // NO usar external para @capacitor/*
   },
 });
