@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageToggle from "@/components/LanguageToggle";
+import { API_BASE_URL } from "@/lib/config";
 
 export default function TechnicianPanel() {
   const { roomId } = useParams();
@@ -22,7 +23,7 @@ export default function TechnicianPanel() {
   useEffect(() => {
     if (!roomId) return;
     // Fetch room name on mount
-    fetch(`/api/rooms/${roomId}`)
+    fetch(`${API_BASE_URL}/api/rooms/${roomId}`)
       .then(res => res.json())
       .then(data => {
         if (data.name) setRoomName(data.name);

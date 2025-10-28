@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageToggle from "@/components/LanguageToggle";
+import { API_BASE_URL } from "@/lib/config";
 
 export default function MusicianPanel() {
   const { roomId } = useParams();
@@ -21,7 +22,7 @@ export default function MusicianPanel() {
   useEffect(() => {
     if (!roomId) return;
     // Fetch room name on mount
-    fetch(`/api/rooms/${roomId}`)
+    fetch(`${API_BASE_URL}/api/rooms/${roomId}`)
       .then(res => res.json())
       .then(data => {
         if (data.name) setRoomName(data.name);
