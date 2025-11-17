@@ -12,46 +12,89 @@ import LanguageToggle from "@/components/LanguageToggle";
 import { API_BASE_URL } from "@/lib/config";
 
 export default function MusicianPanel() {
-  const { roomId } = useParams();
+  const { roomId: roomCode } = useParams();
   const [instrument, setInstrument] = useState("");
-  const { connected, sendMessage, customInstruments, connect } = useWebSocket(roomId!, instrument);
+  const [room, setRoom] = useState<{ id: number; name: string } | null>(null);
+  const [roomError, setRoomError] = useState<string | null>(null);
+  const [loadingRoom, setLoadingRoom] = useState(true);
+  const { connected, sendMessage, customInstruments, connect } = useWebSocket(
+    room ? room.id.toString() : undefined,
+    instrument
+  );
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
-  const [roomName, setRoomName] = useState("");
 
   useEffect(() => {
-    if (!roomId) return;
-    // Fetch room name on mount
-    fetch(`${API_BASE_URL}/api/rooms/${roomId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.name) setRoomName(data.name);
+    if (!roomCode) return;
+    setLoadingRoom(true);
+    fetch(`${API_BASE_URL}/api/rooms/search?name=${encodeURIComponent(roomCode)}`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Sala no encontrada");
+        }
+        return res.json();
       })
-      .catch(err => console.error('Error fetching room name:', err));
-  }, [roomId]);
+      .then((data) => {
+        setRoom(data);
+        setRoomError(null);
+      })
+      .catch((err) => {
+        console.error("Error fetching room:", err);
+        setRoom(null);
+        setRoomError("Sala no encontrada");
+      })
+      .finally(() => setLoadingRoom(false));
+  }, [roomCode]);
 
-  const handleRequest = (request: { targetInstrument: string; action: string; }) => {
-    if (!connected || !roomId) return false;
-    sendMessage({
-      type: 'request',
-      data: {
-        roomId,
-        musician: instrument,
-        instrument: instrument,
-        targetInstrument: request.targetInstrument,
-        action: request.action,
+  const handleRequest = async (request: { targetInstrument: string; action: string }) => {
+    if (!room || !instrument) {
+      console.error('[Musician] ❌ No se puede enviar petición: room o instrument faltante', { room, instrument });
+      return false;
+    }
+
+    const requestData = {
+      musician: instrument,
+      instrument,
+      targetInstrument: request.targetInstrument,
+      action: request.action,
+    };
+
+    console.log('[Musician] 📤 Enviando petición:', requestData);
+    console.log('[Musician] URL:', `${API_BASE_URL}/api/rooms/${room.id}/requests`);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/rooms/${room.id}/requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestData),
+      });
+
+      console.log('[Musician] Respuesta status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Musician] ❌ Error en respuesta del servidor:", errorText);
+        return false;
       }
-    });
-    return true;
+
+      const responseData = await response.json();
+      console.log('[Musician] ✅ Petición enviada exitosamente:', responseData);
+      return true;
+    } catch (error) {
+      console.error("[Musician] ❌ Error enviando petición:", error);
+      return false;
+    }
   };
 
+  const showContent = room && !loadingRoom && !roomError;
+
   return (
-    <div className="min-h-screen p-4 pt-24 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900 dark:to-blue-900">
+    <div className="min-h-screen p-4 pt-24 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900">
       <div className="fixed top-4 left-4 z-10 flex gap-2">
-        <Button variant="outline" size="icon" onClick={() => setLocation('/')}>
+        <Button variant="outline" size="icon" onClick={() => setLocation("/")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="icon" onClick={connect}>
+        <Button variant="outline" size="icon" onClick={connect} disabled={!room}>
           RECONECTAR AHORA
         </Button>
       </div>
@@ -61,25 +104,45 @@ export default function MusicianPanel() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="font-light text-center">{t('room')}: {roomName}</CardTitle>
+          <CardTitle className="font-light text-center">
+            {t("room")}: {room?.name || roomCode}
+          </CardTitle>
         </CardHeader>
-        {!connected && (
+        {roomError && (
+          <CardHeader className="pt-0 pb-0">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>{roomError}</AlertTitle>
+              <AlertDescription className="text-sm">
+                {t("enterRoomName")}
+              </AlertDescription>
+            </Alert>
+          </CardHeader>
+        )}
+        {!roomError && !connected && showContent && (
           <CardHeader className="pt-0 pb-0">
             <Alert variant="destructive" className="max-w-full">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>{t('noConnection')}</AlertTitle>
-              <AlertDescription className="text-sm">{t('reconnecting')}</AlertDescription>
+              <AlertTitle>{t("noConnection")}</AlertTitle>
+              <AlertDescription className="text-sm">{t("reconnecting")}</AlertDescription>
             </Alert>
           </CardHeader>
         )}
         <CardContent className="p-6">
-          <RequestForm
-            currentInstrument={instrument}
-            onInstrumentSelect={setInstrument}
-            onRequest={handleRequest}
-            roomId={roomId!}
-            customInstruments={customInstruments}
-          />
+          {showContent && (
+            <RequestForm
+              currentInstrument={instrument}
+              onInstrumentSelect={setInstrument}
+              onRequest={handleRequest}
+              roomId={room.id.toString()}
+              customInstruments={customInstruments}
+            />
+          )}
+          {!showContent && (
+            <p className="text-center text-sm text-muted-foreground">
+              {loadingRoom ? "Cargando sala..." : roomError || "Sala no encontrada"}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

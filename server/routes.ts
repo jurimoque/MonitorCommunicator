@@ -7,11 +7,41 @@ import { eq, and } from "drizzle-orm";
 import { requestSchema, RequestData } from "./websocket";
 
 export function registerRoutes(app: Express): Server {
+  // Track clients by room
+  const roomClients: Map<string, Set<WebSocket>> = new Map();
+
+  // Broadcast helper so both HTTP & WS flows can notify clients
+  function broadcastToRoom(roomId: string, message: string) {
+    const roomSet = roomClients.get(roomId);
+    console.log(`[Broadcast] Attempting to broadcast to room: ${roomId}`);
+    if (roomSet) {
+      console.log(`[Broadcast] Found ${roomSet.size} client(s) in room ${roomId}.`);
+      let clientIndex = 0;
+      roomSet.forEach((client) => {
+        clientIndex++;
+        console.log(`[Broadcast] -> Client ${clientIndex}: readyState is ${client.readyState}.`);
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            console.log(`[Broadcast] -> Client ${clientIndex}: Sending message: ${message}`);
+            client.send(message);
+          } catch (e) {
+            console.error(`[Broadcast] -> Client ${clientIndex}: FAILED to send message. Error:`, e);
+          }
+        } else {
+          console.log(`[Broadcast] -> Client ${clientIndex}: SKIPPED (not open).`);
+        }
+      });
+    } else {
+      console.log(`[Broadcast] No clients found for room ${roomId}.`);
+    }
+  }
+
   // API Routes
   // Buscar o crear sala
   app.post("/api/rooms/find-or-create", async (req, res, next) => {
     try {
-      const roomName = req.body.name || 'Sala sin nombre';
+      const rawName = (req.body.name || "Sala sin nombre").toString().trim();
+      const roomName = rawName.length ? rawName : "Sala sin nombre";
       
       // Primero buscar si ya existe una sala con ese nombre
       const existingRoom = await db.query.rooms.findFirst({
@@ -48,20 +78,66 @@ export function registerRoutes(app: Express): Server {
       next(error);
     }
   });
+
+  // Crear una petición (vía HTTP) y propagarla por WebSocket
+  app.post("/api/rooms/:roomId/requests", async (req, res, next) => {
+    try {
+      const { roomId } = req.params;
+      const roomIdNum = parseInt(roomId, 10);
+
+      if (isNaN(roomIdNum)) {
+        res.status(400).json({ message: "ID de sala inválido" });
+        return;
+      }
+
+      // Reutilizamos el schema de WS para validar el payload
+      const parsedRequest = requestSchema.parse({
+        ...req.body,
+        roomId,
+      });
+
+      const [newRequest] = await db.insert(requests)
+        .values({
+          roomId: roomIdNum,
+          musician: parsedRequest.musician,
+          instrument: parsedRequest.instrument,
+          targetInstrument: parsedRequest.targetInstrument,
+          action: parsedRequest.action,
+        })
+        .returning();
+
+      broadcastToRoom(roomId, JSON.stringify({
+        type: 'newRequest',
+        data: newRequest,
+      }));
+
+      res.status(201).json(newRequest);
+    } catch (error) {
+      console.error("[API] Error creando petición:", error);
+      next(error);
+    }
+  });
   
   // Buscar salas por nombre
   app.get("/api/rooms/search", async (req, res, next) => {
     try {
-      const name = req.query.name as string;
-      if (!name) {
+      const raw = (req.query.name as string | undefined)?.toString().trim();
+      if (!raw) {
         res.status(400).json({ message: "Nombre requerido" });
         return;
       }
-      
-      const room = await db.query.rooms.findFirst({
-        where: eq(rooms.name, name)
+
+      let room = await db.query.rooms.findFirst({
+        where: eq(rooms.name, raw),
       });
-      
+
+      if (!room && /^\d+$/.test(raw)) {
+        const roomIdNum = parseInt(raw, 10);
+        room = await db.query.rooms.findFirst({
+          where: eq(rooms.id, roomIdNum),
+        });
+      }
+
       if (room) {
         res.json(room);
       } else {
@@ -198,35 +274,6 @@ export function registerRoutes(app: Express): Server {
     console.error('[WebSocket] Error en servidor WebSocket:', error);
   });
   
-  // Track clients by room
-  const roomClients: Map<string, Set<WebSocket>> = new Map();
-  
-  // Broadcast to all clients in a room
-  function broadcastToRoom(roomId: string, message: string) {
-    const roomSet = roomClients.get(roomId);
-    console.log(`[Broadcast] Attempting to broadcast to room: ${roomId}`);
-    if (roomSet) {
-      console.log(`[Broadcast] Found ${roomSet.size} client(s) in room ${roomId}.`);
-      let clientIndex = 0;
-      roomSet.forEach((client) => {
-        clientIndex++;
-        console.log(`[Broadcast] -> Client ${clientIndex}: readyState is ${client.readyState}.`);
-        if (client.readyState === WebSocket.OPEN) {
-          try {
-            console.log(`[Broadcast] -> Client ${clientIndex}: Sending message: ${message}`);
-            client.send(message);
-          } catch (e) {
-            console.error(`[Broadcast] -> Client ${clientIndex}: FAILED to send message. Error:`, e);
-          }
-        } else {
-          console.log(`[Broadcast] -> Client ${clientIndex}: SKIPPED (not open).`);
-        }
-      });
-    } else {
-      console.log(`[Broadcast] No clients found for room ${roomId}.`);
-    }
-  }
-  
   wss.on('connection', async (ws, req) => {
     console.log('[WebSocket] Cliente conectado');
     console.log('[WebSocket] Request URL:', req.url);
@@ -245,54 +292,71 @@ export function registerRoutes(app: Express): Server {
     }
     
     try {
+      console.log('[WebSocket] PASO 1: Parseando roomId...');
       const roomIdNum = parseInt(roomId, 10);
       if (isNaN(roomIdNum)) {
         throw new Error("RoomId debe ser un número");
       }
-      
+      console.log(`[WebSocket] PASO 1: ✅ roomIdNum = ${roomIdNum}`);
+
       // Check if room exists, if not create it
+      console.log('[WebSocket] PASO 2: Buscando sala en la DB...');
       let room = await db.query.rooms.findFirst({
         where: eq(rooms.id, roomIdNum)
       });
-      
+      console.log(`[WebSocket] PASO 2: ${room ? `✅ Sala encontrada: ${room.name}` : '⚠️  Sala no encontrada'}`);
+
       if (!room) {
-        console.log(`[WebSocket] Sala ${roomId} no encontrada, creando nueva sala`);
+        console.log(`[WebSocket] PASO 2.1: Creando nueva sala...`);
         [room] = await db.insert(rooms)
           .values({ name: `Sala ${roomId}` })
           .returning();
-        console.log(`[WebSocket] Nueva sala creada: ${room.name}`);
+        console.log(`[WebSocket] PASO 2.1: ✅ Nueva sala creada: ${room.name}`);
       }
-      
+
       // Add client to room
+      console.log('[WebSocket] PASO 3: Agregando cliente a roomClients...');
       if (!roomClients.has(roomId)) {
         roomClients.set(roomId, new Set());
       }
       roomClients.get(roomId)?.add(ws);
-      
+      console.log(`[WebSocket] PASO 3: ✅ Cliente agregado. Total clientes en sala ${roomId}: ${roomClients.get(roomId)?.size}`);
+
       // Send initial data
+      console.log('[WebSocket] PASO 4: Obteniendo peticiones pendientes...');
       const pendingRequests = await db.query.requests.findMany({
         where: eq(requests.roomId, roomIdNum)
       });
-      
+      console.log(`[WebSocket] PASO 4: ✅ Encontradas ${pendingRequests.length} peticiones`);
+
       // Filter only non-completed requests
       const activeRequests = pendingRequests.filter(req => !req.completed);
-      
+      console.log(`[WebSocket] PASO 4: ${activeRequests.length} peticiones activas`);
+
+      console.log('[WebSocket] PASO 5: Enviando initialRequests al cliente...');
       ws.send(JSON.stringify({
         type: 'initialRequests',
         data: activeRequests
       }));
+      console.log('[WebSocket] PASO 5: ✅ Mensaje initialRequests enviado');
 
       // Send initial custom instruments
+      console.log('[WebSocket] PASO 6: Obteniendo instrumentos personalizados...');
       const existingInstruments = await db.query.customInstruments.findMany({
         where: eq(customInstruments.roomId, roomIdNum)
       });
+      console.log(`[WebSocket] PASO 6: ✅ Encontrados ${existingInstruments.length} instrumentos`);
 
       if (existingInstruments.length > 0) {
+        console.log('[WebSocket] PASO 7: Enviando initialInstruments al cliente...');
         ws.send(JSON.stringify({
           type: 'initialInstruments',
           data: existingInstruments
         }));
+        console.log('[WebSocket] PASO 7: ✅ Mensaje initialInstruments enviado');
       }
+
+      console.log('[WebSocket] ✅ CONEXIÓN COMPLETADA EXITOSAMENTE');
       
       // Handle messages from client
       ws.on('message', async (message) => {
@@ -375,7 +439,11 @@ export function registerRoutes(app: Express): Server {
       });
       
     } catch (error) {
-      console.error('[WebSocket] Error:', error);
+      console.error('[WebSocket] ❌ ERROR CAPTURADO:');
+      console.error('[WebSocket] Error tipo:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('[WebSocket] Error mensaje:', error instanceof Error ? error.message : error);
+      console.error('[WebSocket] Error stack:', error instanceof Error ? error.stack : 'N/A');
+      console.error('[WebSocket] Error completo:', JSON.stringify(error, null, 2));
       ws.close(1011, 'Error interno');
     }
   });
