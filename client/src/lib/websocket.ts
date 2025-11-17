@@ -9,6 +9,12 @@ export function useWebSocket(roomId: string | undefined, currentUserInstrument: 
   const [customInstruments, setCustomInstruments] = useState<string[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
   const { toast } = useToast();
+  const currentUserInstrumentRef = useRef(currentUserInstrument);
+
+  // Keep ref updated
+  useEffect(() => {
+    currentUserInstrumentRef.current = currentUserInstrument;
+  }, [currentUserInstrument]);
 
   const connect = useCallback(() => {
     if (!roomId) {
@@ -64,12 +70,8 @@ export function useWebSocket(roomId: string | undefined, currentUserInstrument: 
       console.error('[WS Client] Error target readyState:', (error.target as WebSocket)?.readyState);
     };
 
-  }, [roomId]);
-
-  useEffect(() => {
-    if (!socketRef.current) return;
-
-    socketRef.current.onmessage = (event) => {
+    // Register message handler IMMEDIATELY
+    newSocket.onmessage = (event) => {
       console.log('[WS Client] 📨 Mensaje recibido del servidor');
       try {
         const message = JSON.parse(event.data);
@@ -87,7 +89,7 @@ export function useWebSocket(roomId: string | undefined, currentUserInstrument: 
             break;
           case 'requestCompleted':
             console.log('[WS Client] ✅ Petición completada:', message.data);
-            if (message.data?.musician === currentUserInstrument) {
+            if (message.data?.musician === currentUserInstrumentRef.current) {
               toast({ title: "Petición completada", description: "El técnico ha completado tu petición." });
             }
             setRequests(prev => prev.filter(req => req.id !== message.data.id));
@@ -104,9 +106,12 @@ export function useWebSocket(roomId: string | undefined, currentUserInstrument: 
             break;
           case 'newInstrument':
             console.log('[WS Client] ✅ Nuevo instrumento recibido:', message.data);
-            if (message.data?.name && !customInstruments.includes(message.data.name)) {
-              setCustomInstruments(prev => [...prev, message.data.name]);
-            }
+            setCustomInstruments(prev => {
+              if (message.data?.name && !prev.includes(message.data.name)) {
+                return [...prev, message.data.name];
+              }
+              return prev;
+            });
             break;
           default:
             console.log('[WS Client] ⚠️  Tipo de mensaje desconocido:', message.type);
@@ -115,8 +120,8 @@ export function useWebSocket(roomId: string | undefined, currentUserInstrument: 
         console.error('[WS Client] ❌ Error procesando mensaje:', error);
       }
     };
-  }, [currentUserInstrument, toast, customInstruments]);
 
+  }, [roomId, toast]);
 
   useEffect(() => {
     if (!roomId) return;
