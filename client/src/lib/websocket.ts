@@ -127,16 +127,24 @@ export function useWebSocket(roomId: string | undefined, currentUserInstrument: 
     if (!roomId) return;
     connect();
 
-    const listener = App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        if ((!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) && roomId) {
-          connect();
+    let listenerHandle: { remove: () => Promise<void> } | null = null;
+
+    const setupListener = async () => {
+      listenerHandle = await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          if ((!socketRef.current || socketRef.current.readyState === WebSocket.CLOSED) && roomId) {
+            connect();
+          }
         }
-      }
-    });
+      });
+    };
+
+    setupListener();
 
     return () => {
-      listener.remove();
+      if (listenerHandle) {
+        listenerHandle.remove();
+      }
       socketRef.current?.close();
     };
   }, [connect, roomId]);
