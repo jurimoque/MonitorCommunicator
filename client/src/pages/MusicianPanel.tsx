@@ -90,15 +90,15 @@ export default function MusicianPanel() {
 
   return (
     <div className="min-h-screen p-4 pt-24 bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 dark:from-purple-900 dark:via-pink-900">
-      <div className="fixed top-4 left-4 z-10 flex gap-2">
+      <div className="fixed top-16 left-4 z-10 flex gap-2">
         <Button variant="outline" size="icon" onClick={() => setLocation("/")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <Button variant="outline" size="icon" onClick={connect} disabled={!room}>
-          RECONECTAR AHORA
+          <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
-      <div className="fixed top-4 right-4 z-10 flex gap-2">
+      <div className="fixed top-16 right-4 z-10 flex gap-2">
         <LanguageToggle />
         <ThemeToggle />
       </div>
