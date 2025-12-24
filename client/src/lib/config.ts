@@ -15,12 +15,13 @@ export const getBaseUrl = () => {
     // For native production builds, point to the live server
     return 'https://monitorcommunicator.onrender.com';
   }
-  // For web development (localhost), use relative paths (Vite proxy handles it)
-  if (import.meta.env.DEV) {
+  // For web, check hostname at runtime to be absolutely sure
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return '';
   }
 
-  // For web production (Vercel), point directly to Render
+  // For production web (Vercel), point directly to Render
   return 'https://monitorcommunicator.onrender.com';
 };
 
