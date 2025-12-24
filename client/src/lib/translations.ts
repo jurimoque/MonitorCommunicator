@@ -6,7 +6,7 @@ export const translations = {
     selectRole: 'Selecciona tu rol',
     musician: 'Músico',
     technician: 'Técnico',
-    
+
     // Room Management
     roomManagement: 'Gestión de Sala',
     createRoom: 'Crear Sala',
@@ -15,7 +15,7 @@ export const translations = {
     create: 'Crear',
     join: 'Unirse',
     cancel: 'Cancelar',
-    
+
     // Instruments
     'Batería': 'Batería',
     'Bajo': 'Bajo',
@@ -24,7 +24,7 @@ export const translations = {
     'Voz Principal': 'Voz Principal',
     'Coros': 'Coros',
     'Percusión': 'Percusión',
-    
+
     // Instrument Selection
     selectInstrument: 'Selecciona tu instrumento',
     createCustomInstrument: '+ Crear instrumento personalizado',
@@ -32,7 +32,7 @@ export const translations = {
     confirm: 'Confirmar',
     instrumentCreated: 'Instrumento creado',
     instrumentAvailable: 'ahora está disponible para todos en la sala',
-    
+
     // Request Form
     yourInstrument: 'Tu instrumento',
     change: 'Cambiar',
@@ -44,7 +44,7 @@ export const translations = {
     reverbUp: 'REVERB +',
     thanks: '✓ GRACIAS',
     assistance: '⚠ ASISTENCIA',
-    
+
     // Actions
     requestSent: 'Petición enviada',
     requestSentDesc: 'Se ha enviado tu petición para',
@@ -54,7 +54,7 @@ export const translations = {
     reverbDownAction: 'disminuir el reverb',
     thanksAction: 'agradecer al técnico',
     assistanceAction: 'solicitar asistencia',
-    
+
     // Technician Panel
     requestQueue: 'Cola de Peticiones',
     clearQueue: 'Limpiar Cola',
@@ -68,14 +68,14 @@ export const translations = {
     noPendingRequests: 'No hay peticiones pendientes',
     thanksMessage: '✓ GRACIAS',
     assistanceMessage: '⚠ SOLICITA ASISTENCIA',
-    
+
     // Errors
     error: 'Error',
     errorSendingRequest: 'No se pudo enviar la petición. Por favor, inténtalo de nuevo.',
     errorSavingInstrument: 'No se pudo guardar el instrumento personalizado. Inténtalo de nuevo.',
     errorClearingQueue: 'No se pudieron completar todas las peticiones',
     errorCompletingRequest: 'No se pudo completar la petición',
-    
+
     // Join Room Form
     roomNamePlaceholder: 'código de sala',
     searching: 'Buscando...',
@@ -92,13 +92,24 @@ export const translations = {
     enterRoomName: 'Por favor ingresa un nombre para la sala',
     joinInfo: 'Conecta a una sala existente',
     createInfo: 'Crea nueva o usa existente si ya hay una',
+
+    // Settings
+    settings: 'Configuración',
+    visualFlash: 'Destello Visual',
+    visualFlashDesc: 'Parpadear pantalla al recibir notificaciones',
+    appearance: 'Apariencia',
+    language: 'Idioma',
+    theme: 'Tema',
+    light: 'Claro',
+    dark: 'Oscuro',
+    close: 'Cerrar',
   },
   en: {
     // Home / Role Selection
     selectRole: 'Select your role',
     musician: 'Musician',
     technician: 'Technician',
-    
+
     // Room Management
     roomManagement: 'Room Management',
     createRoom: 'Create Room',
@@ -107,7 +118,7 @@ export const translations = {
     create: 'Create',
     join: 'Join',
     cancel: 'Cancel',
-    
+
     // Instruments
     'Batería': 'Drums',
     'Bajo': 'Bass',
@@ -116,7 +127,7 @@ export const translations = {
     'Voz Principal': 'Lead Vocals',
     'Coros': 'Backing Vocals',
     'Percusión': 'Percussion',
-    
+
     // Instrument Selection
     selectInstrument: 'Select your instrument',
     createCustomInstrument: '+ Create custom instrument',
@@ -124,7 +135,7 @@ export const translations = {
     confirm: 'Confirm',
     instrumentCreated: 'Instrument created',
     instrumentAvailable: 'is now available to everyone in the room',
-    
+
     // Request Form
     yourInstrument: 'Your instrument',
     change: 'Change',
@@ -136,7 +147,7 @@ export const translations = {
     reverbUp: 'REVERB +',
     thanks: '✓ THANKS',
     assistance: '⚠ ASSISTANCE',
-    
+
     // Actions
     requestSent: 'Request sent',
     requestSentDesc: 'Your request has been sent to',
@@ -146,7 +157,7 @@ export const translations = {
     reverbDownAction: 'decrease reverb',
     thanksAction: 'thank the technician',
     assistanceAction: 'request assistance',
-    
+
     // Technician Panel
     requestQueue: 'Request Queue',
     clearQueue: 'Clear Queue',
@@ -160,14 +171,14 @@ export const translations = {
     noPendingRequests: 'No pending requests',
     thanksMessage: '✓ THANKS',
     assistanceMessage: '⚠ REQUESTS ASSISTANCE',
-    
+
     // Errors
     error: 'Error',
     errorSendingRequest: 'Could not send the request. Please try again.',
     errorSavingInstrument: 'Could not save custom instrument. Try again.',
     errorClearingQueue: 'Could not complete all requests',
     errorCompletingRequest: 'Could not complete the request',
-    
+
     // Join Room Form
     roomNamePlaceholder: 'venue code',
     searching: 'Searching...',
@@ -184,6 +195,17 @@ export const translations = {
     enterRoomName: 'Please enter a room name',
     joinInfo: 'Connect to an existing room',
     createInfo: 'Create new or use existing if there\'s one',
+
+    // Settings
+    settings: 'Settings',
+    visualFlash: 'Visual Flash',
+    visualFlashDesc: 'Flash screen on new notifications',
+    appearance: 'Appearance',
+    language: 'Language',
+    theme: 'Theme',
+    light: 'Light',
+    dark: 'Dark',
+    close: 'Close',
   }
 };
 
