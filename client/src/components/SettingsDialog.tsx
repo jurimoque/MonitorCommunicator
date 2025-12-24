@@ -18,7 +18,7 @@ import { useSettings } from "@/hooks/use-settings";
 export default function SettingsDialog() {
     const { language, toggleLanguage, t } = useLanguage();
     const { theme, toggleTheme } = useTheme();
-    const { visualFlashEnabled, toggleVisualFlash } = useSettings();
+    const { visualFlashEnabled, toggleVisualFlash, soundEnabled, toggleSound } = useSettings();
 
     return (
         <Dialog>
@@ -51,6 +51,25 @@ export default function SettingsDialog() {
                             id="visual-flash"
                             checked={visualFlashEnabled}
                             onCheckedChange={toggleVisualFlash}
+                        />
+                    </div>
+
+                    <div className="h-[1px] bg-border my-2" />
+
+                    {/* Sound Setting */}
+                    <div className="flex items-center justify-between space-x-2">
+                        <div className="flex flex-col space-y-1">
+                            <Label htmlFor="sound" className="font-medium">
+                                {t("sound")}
+                            </Label>
+                            <span className="text-xs text-muted-foreground">
+                                {t("soundDesc")}
+                            </span>
+                        </div>
+                        <Switch
+                            id="sound"
+                            checked={soundEnabled}
+                            onCheckedChange={toggleSound}
                         />
                     </div>
 

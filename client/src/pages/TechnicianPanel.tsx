@@ -17,7 +17,7 @@ export default function TechnicianPanel() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { visualFlashEnabled } = useSettings();
+  const { visualFlashEnabled, soundEnabled } = useSettings();
   const [room, setRoom] = useState<{ id: number; name: string } | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
@@ -29,18 +29,55 @@ export default function TechnicianPanel() {
     ""
   );
 
+  const playSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 (high pitch)
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1); // Drop to A4
+
+      gain.gain.setValueAtTime(0.5, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.error("Error playing sound", e);
+    }
+  };
+
   useEffect(() => {
     if (requests.length > prevRequestCount.current) {
-      // Only flash if enabled and not the initial load (optional: remove !loadingRoom check if you want flash on load)
-      // Actually, flashing on load might be good if there are pending requests.
+      // Trigger effects on new requests
+
+      if (soundEnabled) {
+        playSound();
+      }
+
       if (visualFlashEnabled) {
-        setFlashActive(true);
-        const timer = setTimeout(() => setFlashActive(false), 300); // 300ms flash
-        return () => clearTimeout(timer);
+        // Strobe effect: Flash 3 times quickly
+        let flashes = 0;
+        const interval = setInterval(() => {
+          setFlashActive(prev => !prev);
+          flashes++;
+          if (flashes >= 6) { // 3 on, 3 off
+            clearInterval(interval);
+            setFlashActive(false);
+          }
+        }, 100);
       }
     }
     prevRequestCount.current = requests.length;
-  }, [requests.length, visualFlashEnabled]);
+  }, [requests.length, visualFlashEnabled, soundEnabled]);
 
   useEffect(() => {
     if (!roomCode) return;

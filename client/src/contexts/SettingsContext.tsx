@@ -5,16 +5,19 @@ import { useTheme } from "@/hooks/use-theme";
 
 interface Settings {
     visualFlashEnabled: boolean;
+    soundEnabled: boolean;
 }
 
 const SETTINGS_KEY = "monitor-communicator-settings";
 
 const defaultSettings: Settings = {
     visualFlashEnabled: false,
+    soundEnabled: false,
 };
 
 interface SettingsContextType extends Settings {
     toggleVisualFlash: () => void;
+    toggleSound: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -37,6 +40,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         }));
     };
 
+    const toggleSound = () => {
+        setSettings((prev) => ({
+            ...prev,
+            soundEnabled: !prev.soundEnabled,
+        }));
+    };
+
     // We can include theme/lang here too if we want central state,
     // but for now visualFlash is the critical missing piece.
 
@@ -44,7 +54,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         <SettingsContext.Provider
             value={{
                 ...settings,
-                toggleVisualFlash
+                toggleVisualFlash,
+                toggleSound
             }}
         >
             {children}
