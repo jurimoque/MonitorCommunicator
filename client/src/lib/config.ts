@@ -15,8 +15,13 @@ export const getBaseUrl = () => {
     // For native production builds, point to the live server
     return 'https://monitorcommunicator.onrender.com';
   }
-  // For web, use relative paths
-  return '';
+  // For web development (localhost), use relative paths (Vite proxy handles it)
+  if (import.meta.env.DEV) {
+    return '';
+  }
+
+  // For web production (Vercel), point directly to Render
+  return 'https://monitorcommunicator.onrender.com';
 };
 
 export const API_BASE_URL = getBaseUrl();
